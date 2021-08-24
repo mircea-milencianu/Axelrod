@@ -237,7 +237,11 @@ class Tournament(object):
 
     def _write_interactions_to_file(self, results, writer):
         """Write the interactions to csv."""
+        print("Starting to write results on csv.")
         for index_pair, interactions in results.items():
+            print("index_pair: {} \n interactions: {}".format(
+                index_pair, interactions
+            ))
             repetition = 0
             for interaction, results in interactions:
 
