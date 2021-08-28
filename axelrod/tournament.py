@@ -239,7 +239,7 @@ class Tournament(object):
 
     def _write_interactions_to_file(self, results, writer):
         """Write the interactions to csv."""
-        print("Starting to write results on csv.")
+        #print("Starting to write results on csv.")
         for index_pair, interactions in results.items():
             # print("index_pair: {} \n interactions: {}".format(
             #     index_pair, interactions
@@ -444,8 +444,10 @@ class Tournament(object):
         for _ in range(repetitions):
             match.play()
             pprint.pprint("winner: {}".format(match.winner()))
+            pprint.pprint("The score is: {}".format(match.final_score()))
             if match.winner() is False:
                 print("The match ends in equality.")
+
             if build_results:
                 results = self._calculate_results(match.result)
             else:
