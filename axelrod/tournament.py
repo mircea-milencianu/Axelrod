@@ -2,6 +2,8 @@ import csv
 import logging
 import os
 import warnings
+import pprint
+
 from collections import defaultdict
 from multiprocessing import Process, Queue, cpu_count
 from tempfile import mkstemp
@@ -239,9 +241,9 @@ class Tournament(object):
         """Write the interactions to csv."""
         print("Starting to write results on csv.")
         for index_pair, interactions in results.items():
-            print("index_pair: {} \n interactions: {}".format(
-                index_pair, interactions
-            ))
+            # print("index_pair: {} \n interactions: {}".format(
+            #     index_pair, interactions
+            # ))
             repetition = 0
             for interaction, results in interactions:
 
@@ -430,6 +432,9 @@ class Tournament(object):
         """
         interactions = defaultdict(list)
         index_pair, match_params, repetitions, seed = chunk
+        pprint.pprint("index_pair: {}".format(index_pair))
+        #pprint.pprint("match_params: {}".format(match_params))
+
         p1_index, p2_index = index_pair
         player1 = self.players[p1_index].clone()
         player2 = self.players[p2_index].clone()
@@ -438,6 +443,7 @@ class Tournament(object):
         match = Match(**match_params)
         for _ in range(repetitions):
             match.play()
+            pprint.pprint("winner: {}".format(match.winner()))
 
             if build_results:
                 results = self._calculate_results(match.result)
