@@ -444,7 +444,8 @@ class Tournament(object):
         for _ in range(repetitions):
             match.play()
             pprint.pprint("winner: {}".format(match.winner()))
-
+            if match.winner() is False:
+                print("The match ends in equality.")
             if build_results:
                 results = self._calculate_results(match.result)
             else:
