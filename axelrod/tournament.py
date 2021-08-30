@@ -93,7 +93,7 @@ class Tournament(object):
         )
         self._logger = logging.getLogger(__name__)
 
-        self.use_progress_bar = True
+        self.use_progress_bar = False
         self.filename = None  # type: Optional[str]
         self._temp_file_descriptor = None  # type: Optional[int]
 
@@ -150,14 +150,18 @@ class Tournament(object):
             self._run_parallel(build_results=build_results, processes=processes)
 
         result_set = None
-        if build_results:
-            result_set = ResultSet(
-                filename=self.filename,
-                players=[str(p) for p in self.players],
-                repetitions=self.repetitions,
-                processes=processes,
-                progress_bar=progress_bar,
-            )
+        # Mai jos este apelata o clasa care proceseaza rezultatele;
+        # Deocamdata greu de integrat cu ce ne trebuie noua;
+        # Pe viitor poate fi utila deoarece scopul ei este sa proceseze rezultate mare care nu incap in memorie;
+        
+        # if build_results:
+        #     result_set = ResultSet(
+        #         filename=self.filename,
+        #         players=[str(p) for p in self.players],
+        #         repetitions=self.repetitions,
+        #         processes=processes,
+        #         progress_bar=progress_bar,
+        #     )
         if self._temp_file_descriptor is not None:
             assert self.filename is not None
             os.close(self._temp_file_descriptor)
@@ -207,25 +211,25 @@ class Tournament(object):
                     [
                         "Score",
                         "Score difference",
-                        "Turns",
-                        "Score per turn",
-                        "Score difference per turn",
+                        # "Turns",
+                        # "Score per turn",
+                        # "Score difference per turn",
                         "Win",
-                        "Initial cooperation",
-                        "Cooperation count",
-                        "CC count",
-                        "CD count",
-                        "DC count",
-                        "DD count",
-                        "CC to C count",
-                        "CC to D count",
-                        "CD to C count",
-                        "CD to D count",
-                        "DC to C count",
-                        "DC to D count",
-                        "DD to C count",
-                        "DD to D count",
-                        "Good partner",
+                        # "Initial cooperation",
+                        # "Cooperation count",
+                        # "CC count",
+                        # "CD count",
+                        # "DC count",
+                        # "DD count",
+                        # "CC to C count",
+                        # "CC to D count",
+                        # "CD to C count",
+                        # "CD to D count",
+                        # "DC to C count",
+                        # "DC to D count",
+                        # "DD to C count",
+                        # "DD to D count",
+                        # "Good partner",
                     ]
                 )
 
@@ -251,15 +255,10 @@ class Tournament(object):
                     (
                         scores,
                         score_diffs,
-                        turns,
-                        score_per_turns,
-                        score_diffs_per_turns,
-                        initial_cooperation,
-                        cooperations,
-                        state_distribution,
-                        state_to_action_distributions,
                         winner_index,
                     ) = results
+
+                pprint.pprint(results)
                 for index, player_index in enumerate(index_pair):
                     opponent_index = index_pair[index - 1]
                     row = [self.num_interactions, player_index, opponent_index, repetition,
@@ -270,23 +269,23 @@ class Tournament(object):
                     if results is not None:
                         row.append(scores[index])
                         row.append(score_diffs[index])
-                        row.append(turns)
-                        row.append(score_per_turns[index])
-                        row.append(score_diffs_per_turns[index])
+                        # row.append(turns)
+                        # row.append(score_per_turns[index])
+                        # row.append(score_diffs_per_turns[index])
                         row.append(int(winner_index is index))
-                        row.append(initial_cooperation[index])
-                        row.append(cooperations[index])
+                        # row.append(initial_cooperation[index])
+                        # row.append(cooperations[index])
 
-                        states = [(C, C), (C, D), (D, C), (D, D)]
-                        if index == 1:
-                            states = [s[::-1] for s in states]
-                        for state in states:
-                            row.append(state_distribution[state])
-                        for state in states:
-                            row.append(state_to_action_distributions[index][(state, C)])
-                            row.append(state_to_action_distributions[index][(state, D)])
+                        # states = [(C, C), (C, D), (D, C), (D, D)]
+                        # if index == 1:
+                        #     states = [s[::-1] for s in states]
+                        # for state in states:
+                        #     row.append(state_distribution[state])
+                        # for state in states:
+                        #     row.append(state_to_action_distributions[index][(state, C)])
+                        #     row.append(state_to_action_distributions[index][(state, D)])
 
-                        row.append(int(cooperations[index] >= cooperations[index - 1]))
+                        # row.append(int(cooperations[index] >= cooperations[index - 1]))
 
                     writer.writerow(row)
                 repetition += 1
@@ -430,7 +429,8 @@ class Tournament(object):
 
                 (0, 1) -> [(C, D), (D, C),...]
         """
-        interactions = defaultdict(list)
+        # Foloseste defaultdict pentru a grupa rezultatele.
+        interactions = defaultdict(list) 
         index_pair, match_params, repetitions, seed = chunk
         pprint.pprint("index_pair: {}".format(index_pair))
         #pprint.pprint("match_params: {}".format(match_params))
@@ -443,18 +443,44 @@ class Tournament(object):
         match = Match(**match_params)
         for _ in range(repetitions):
             match.play()
-            pprint.pprint("winner: {}".format(match.winner()))
+            pprint.pprint("Winner: {}".format(match.winner()))
+            pprint.pprint("Match result: {}".format(match.result))
             pprint.pprint("The score is: {}".format(match.final_score()))
+
             if match.winner() is False:
                 print("The match ends in equality.")
 
             if build_results:
-                results = self._calculate_results(match.result)
+                results = self._calc_new_results(match.result)
             else:
                 results = None
 
             interactions[index_pair].append([match.result, results])
+        pprint.pprint("interactions: {}".format(interactions))
         return interactions
+
+
+    def _calc_new_results(self, interactions):
+        """
+        Building the resutls for our custom case.
+        Working towards the winner matrix.
+        """
+        results = []
+        # Ordinea e importanta deoarece asa o sa fie procesate mai departe
+        # din cauza ca se foloseste append;
+
+        scores = iu.compute_final_score(interactions, self.game)
+        results.append(scores)
+        
+        score_diffs = scores[0] - scores[1], scores[1] - scores[0]
+        results.append(score_diffs)
+
+        winner_index = iu.compute_winner_index(interactions, self.game)
+        results.append(winner_index)
+
+        return results
+
+
 
     def _calculate_results(self, interactions):
         results = []
