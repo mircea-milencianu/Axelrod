@@ -7,6 +7,7 @@ class MatchGenerator(object):
         players,
         repetitions,
         turns=None,
+        deviation=None,
         game=None,
         noise=0,
         prob_end=None,
@@ -42,6 +43,7 @@ class MatchGenerator(object):
         """
         self.players = players
         self.turns = turns
+        self.deviation = deviation
         self.game = game
         self.repetitions = repetitions
         self.noise = noise
@@ -86,6 +88,13 @@ class MatchGenerator(object):
         """
         Creates a single set of match parameters.
         """
+        # print("Mean turn value is: {} havint the deviation {}".format(self.turns, self.deviation))
+        # if self.deviation is not None:
+        #     rd_turns = int(np.random.default_rng().normal(self.turns, self.deviation, None))
+        # else:
+        #     rd_turns = self.turns
+        
+        # print("Generated: {} turns.".format(rd_turns))
         return {
             "turns": self.turns,
             "game": self.game,

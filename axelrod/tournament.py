@@ -3,6 +3,8 @@ import logging
 import os
 import warnings
 import pprint
+import numpy as np
+
 
 from collections import defaultdict
 from multiprocessing import Process, Queue, cpu_count
@@ -30,6 +32,7 @@ class Tournament(object):
         name: str = "axelrod",
         game: Game = None,
         turns: int = None,
+        deviation: int = None, # variabila noua pentru distributii
         prob_end: float = None,
         repetitions: int = 10,
         noise: float = 0,
@@ -79,10 +82,12 @@ class Tournament(object):
             turns = DEFAULT_TURNS
 
         self.turns = turns
+        self.deviation = deviation
         self.prob_end = prob_end
         self.match_generator = MatchGenerator(
             players=players,
             turns=turns,
+            deviation=self.deviation,
             game=self.game,
             repetitions=self.repetitions,
             prob_end=prob_end,
@@ -93,7 +98,7 @@ class Tournament(object):
         )
         self._logger = logging.getLogger(__name__)
 
-        self.use_progress_bar = False
+        self.use_progress_bar = None
         self.filename = None  # type: Optional[str]
         self._temp_file_descriptor = None  # type: Optional[int]
 
@@ -112,7 +117,7 @@ class Tournament(object):
         build_results: bool = True,
         filename: str = None,
         processes: int = None,
-        progress_bar: bool = True,
+        progress_bar: bool = False,
     ) -> ResultSet:
         """
         Plays the tournament and passes the results to the ResultSet class
@@ -152,7 +157,7 @@ class Tournament(object):
         result_set = None
         # Mai jos este apelata o clasa care proceseaza rezultatele;
         # Deocamdata greu de integrat cu ce ne trebuie noua;
-        # Pe viitor poate fi utila deoarece scopul ei este sa proceseze rezultate mare care nu incap in memorie;
+        # Pe viitor poate fi utila deoarece scopul ei este sa proceseze rezultate mari care nu incap in memorie;
         
         # if build_results:
         #     result_set = ResultSet(
@@ -173,6 +178,7 @@ class Tournament(object):
         """Run all matches in serial."""
 
         chunks = self.match_generator.build_match_chunks()
+        pprint.pprint(chunks)
 
         out_file, writer = self._get_file_objects(build_results)
         progress_bar = self._get_progress_bar()
@@ -211,10 +217,10 @@ class Tournament(object):
                     [
                         "Score",
                         "Score difference",
-                        # "Turns",
                         # "Score per turn",
                         # "Score difference per turn",
                         "Win",
+                        "Turns",
                         # "Initial cooperation",
                         # "Cooperation count",
                         # "CC count",
@@ -256,9 +262,11 @@ class Tournament(object):
                         scores,
                         score_diffs,
                         winner_index,
+                        turns,
+
                     ) = results
 
-                pprint.pprint(results)
+                #pprint.pprint(results)
                 for index, player_index in enumerate(index_pair):
                     opponent_index = index_pair[index - 1]
                     row = [self.num_interactions, player_index, opponent_index, repetition,
@@ -269,10 +277,11 @@ class Tournament(object):
                     if results is not None:
                         row.append(scores[index])
                         row.append(score_diffs[index])
-                        # row.append(turns)
                         # row.append(score_per_turns[index])
                         # row.append(score_diffs_per_turns[index])
                         row.append(int(winner_index is index))
+                        row.append(turns)
+
                         # row.append(initial_cooperation[index])
                         # row.append(cooperations[index])
 
@@ -440,15 +449,22 @@ class Tournament(object):
         player2 = self.players[p2_index].clone()
         match_params["players"] = (player1, player2)
         match_params["seed"] = seed
-        match = Match(**match_params)
         for _ in range(repetitions):
+            #print("Mean turn value is: {} having the deviation {}".format(self.turns, self.deviation))
+            if self.deviation is not None:
+                match_params["turns"] = int(np.random.default_rng().normal(self.turns, self.deviation, None))
+            else:
+                match_params["turns"] = self.turns
+            pprint.pprint("Generated: {}".format(match_params["turns"]))
+            match = Match(**match_params)
             match.play()
-            pprint.pprint("Winner: {}".format(match.winner()))
-            pprint.pprint("Match result: {}".format(match.result))
-            pprint.pprint("The score is: {}".format(match.final_score()))
+            #pprint.pprint("Winner: {}".format(match.winner()))
+            #pprint.pprint("Match result: {}".format(match.result))
+            #pprint.pprint("The score is: {}".format(match.final_score()))
+            #pprint.pprint("The number of turns is: {}".format(match.turns))
 
-            if match.winner() is False:
-                print("The match ends in equality.")
+            # if match.winner() is False:
+            #     print("The match ends in equality.")
 
             if build_results:
                 results = self._calc_new_results(match.result)
@@ -456,7 +472,7 @@ class Tournament(object):
                 results = None
 
             interactions[index_pair].append([match.result, results])
-        pprint.pprint("interactions: {}".format(interactions))
+        #pprint.pprint("interactions: {}".format(interactions))
         return interactions
 
 
@@ -472,11 +488,15 @@ class Tournament(object):
         scores = iu.compute_final_score(interactions, self.game)
         results.append(scores)
         
+        pprint.pprint(scores)
         score_diffs = scores[0] - scores[1], scores[1] - scores[0]
         results.append(score_diffs)
 
         winner_index = iu.compute_winner_index(interactions, self.game)
         results.append(winner_index)
+
+        turns = len(interactions)
+        results.append(turns)
 
         return results
 
