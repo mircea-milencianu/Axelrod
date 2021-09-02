@@ -1,3 +1,4 @@
+from axelrod.winner_matrix import WinnerMatrix
 import csv
 import logging
 import os
@@ -114,11 +115,12 @@ class Tournament(object):
 
     def play(
         self,
-        build_results: bool = True,
+        build_results: bool = False,
+        build_matrix: bool = True,
         filename: str = None,
         processes: int = None,
         progress_bar: bool = False,
-    ) -> ResultSet:
+    ) -> WinnerMatrix:
         """
         Plays the tournament and passes the results to the ResultSet class
 
@@ -126,6 +128,8 @@ class Tournament(object):
         ----------
         build_results : bool
             whether or not to build a results set
+        build_matrix : bool
+            whether or not to build a winner matrix
         filename : string
             name of output file
         processes : integer
@@ -143,22 +147,30 @@ class Tournament(object):
 
         self.setup_output(filename)
 
-        if not build_results and not filename:
+        if not build_matrix and not filename:
             warnings.warn(
-                "Tournament results will not be accessible since "
-                "build_results=False and no filename was supplied."
+                "Tournament matrix will not be accessible created since "
+                "build_matrix=False and no filename was supplied."
             )
 
         if processes is None:
-            self._run_serial(build_results=build_results)
+            self._run_serial(build_results=build_matrix)
         else:
-            self._run_parallel(build_results=build_results, processes=processes)
+            self._run_parallel(build_results=build_matrix, processes=processes)
 
-        result_set = None
+        winner_matrix = None
+
+        if build_matrix:
+            result_set = WinnerMatrix(
+                filename=self.filename,
+                players=[str(p) for p in self.players],
+                repetitions=self.repetitions,
+                processes=processes,
+                progress_bar=progress_bar,
+            )
         # Mai jos este apelata o clasa care proceseaza rezultatele;
         # Deocamdata greu de integrat cu ce ne trebuie noua;
-        # Pe viitor poate fi utila deoarece scopul ei este sa proceseze rezultate mari care nu incap in memorie;
-        
+        # Pe viitor poate fi utila deoarece scopul ei este sa proceseze rezultate mari care nu incap in memorie;        
         # if build_results:
         #     result_set = ResultSet(
         #         filename=self.filename,
@@ -172,7 +184,7 @@ class Tournament(object):
             os.close(self._temp_file_descriptor)
             os.remove(self.filename)
 
-        return result_set
+        return winner_matrix
 
     def _run_serial(self, build_results: bool = True) -> bool:
         """Run all matches in serial."""
@@ -210,7 +222,6 @@ class Tournament(object):
                 "Repetition",
                 "Player name",
                 "Opponent name",
-                "Actions",
             ]
             if build_results:
                 header.extend(
@@ -271,8 +282,8 @@ class Tournament(object):
                     opponent_index = index_pair[index - 1]
                     row = [self.num_interactions, player_index, opponent_index, repetition,
                            str(self.players[player_index]), str(self.players[opponent_index])]
-                    history = actions_to_str([i[index] for i in interaction])
-                    row.append(history)
+                    #history = actions_to_str([i[index] for i in interaction])
+
 
                     if results is not None:
                         row.append(scores[index])
@@ -295,7 +306,7 @@ class Tournament(object):
                         #     row.append(state_to_action_distributions[index][(state, D)])
 
                         # row.append(int(cooperations[index] >= cooperations[index - 1]))
-
+                    #row.append(history)
                     writer.writerow(row)
                 repetition += 1
                 self.num_interactions += 1
