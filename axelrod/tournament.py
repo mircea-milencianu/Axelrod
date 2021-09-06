@@ -170,7 +170,7 @@ class Tournament(object):
             )
         # Mai jos este apelata o clasa care proceseaza rezultatele;
         # Deocamdata greu de integrat cu ce ne trebuie noua;
-        # Pe viitor poate fi utila deoarece scopul ei este sa proceseze rezultate mari care nu incap in memorie;        
+        # Pe viitor poate fi utila deoarece scopul ei este sa proceseze rezultate mari care nu incap in memorie;
         # if build_results:
         #     result_set = ResultSet(
         #         filename=self.filename,
@@ -232,6 +232,7 @@ class Tournament(object):
                         # "Score difference per turn",
                         "Win",
                         "Turns",
+                        "Winner List"
                         # "Initial cooperation",
                         # "Cooperation count",
                         # "CC count",
@@ -274,6 +275,7 @@ class Tournament(object):
                         score_diffs,
                         winner_index,
                         turns,
+                        win_list,
 
                     ) = results
 
@@ -284,7 +286,7 @@ class Tournament(object):
                            str(self.players[player_index]), str(self.players[opponent_index])]
                     #history = actions_to_str([i[index] for i in interaction])
 
-
+                    #print(type(results[4]))
                     if results is not None:
                         row.append(scores[index])
                         row.append(score_diffs[index])
@@ -292,6 +294,7 @@ class Tournament(object):
                         # row.append(score_diffs_per_turns[index])
                         row.append(int(winner_index is index))
                         row.append(turns)
+                        row.append(win_list)
 
                         # row.append(initial_cooperation[index])
                         # row.append(cooperations[index])
@@ -450,7 +453,7 @@ class Tournament(object):
                 (0, 1) -> [(C, D), (D, C),...]
         """
         # Foloseste defaultdict pentru a grupa rezultatele.
-        interactions = defaultdict(list) 
+        interactions = defaultdict(list)
         index_pair, match_params, repetitions, seed = chunk
         pprint.pprint("index_pair: {}".format(index_pair))
         #pprint.pprint("match_params: {}".format(match_params))
@@ -498,7 +501,7 @@ class Tournament(object):
 
         scores = iu.compute_final_score(interactions, self.game)
         results.append(scores)
-        
+
         pprint.pprint(scores)
         score_diffs = scores[0] - scores[1], scores[1] - scores[0]
         results.append(score_diffs)
@@ -508,6 +511,9 @@ class Tournament(object):
 
         turns = len(interactions)
         results.append(turns)
+
+        interactions_result_list = iu.compute_interaction_list(interactions, self.game)
+        results.append(interactions_result_list)
 
         return results
 

@@ -2,6 +2,9 @@
 import csv
 import itertools
 import warnings
+import operator
+import ast
+
 from collections import Counter, namedtuple
 from multiprocessing import cpu_count
 from typing import List
@@ -11,6 +14,7 @@ import pprint as p
 import pandas as pd
 import numpy as np
 import tqdm
+
 from axelrod.action import Action
 
 from . import eigen
@@ -37,7 +41,7 @@ def update_progress_bar(method):
 
 class WinnerMatrix:
     """
-    A class to build the winner matrix for a tournament. 
+    A class to build the winner matrix for a tournament.
     Reads in a CSV file produced by the tournament class.
 
     """
@@ -69,20 +73,15 @@ class WinnerMatrix:
             self.progress_bar = tqdm.tqdm(total=25, desc="Analysing")
 
         self.df = pd.read_csv(filename)
-        self.wins_df = self.df.groupby(["Player name","Opponent name"])["Win"].sum().unstack()
-        p.pprint(self.wins_df)
-        
-        # p.pprint(self.df.tail())
-        # p.pprint(self.df.dtypes)
-
-        # self.build_match_results_matrix(df)
-        
+        temp_df = self.df["Winner List"].apply((lambda x: ast.literal_eval(x)))
+        self.df.update(temp_df)
+        p.pprint(self.df)
         self.build_winner_pd()
 
         if progress_bar:
             self.progress_bar.close()
 
-    
+
     def build_match_results_matrix(self, df):
         """
         Build the resutlts matrix matrix.
@@ -96,11 +95,13 @@ class WinnerMatrix:
         # p.pprint(df_by_repetions)
 
     def calc_winner(self, player, opponent):
-        # df_by_players = self.df.groupby(["Player name","Opponent name"])["Win"].sum().unstack()
-        # p.pprint(df_by_players)
-        p.pprint("The current player is {} and his opponent is {}".format(player, opponent))
-        # p.pprint(df_by_players.at[player, opponent])
         winner_list = [0,0,0]
+        for index, row in self.df.iterrows():
+            if row["Player name"] == player and row["Opponent name"] == opponent:
+                winner_list =list(map(operator.add, winner_list, row["Winner List"]))
+        #p.pprint(winner_list)
+        p.pprint("{} against {}".format(player, opponent))
+        p.pprint("The final result for the interaction: {}".format(winner_list))
         return winner_list
 
     def build_winner_pd(self):
@@ -116,7 +117,7 @@ class WinnerMatrix:
             for opponent in self.players:
                 winners.at[player, opponent] = self.calc_winner(player, opponent)
                 #winners.applymap(self.calc_winner(self))
-        
+        p.pprint("MATRICEA FINALA:")
         p.pprint(winners)
 
     def __eq__(self, other):

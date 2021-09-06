@@ -62,6 +62,17 @@ def compute_winner_index(interactions, game=None):
         return max([0, 1], key=lambda i: scores[i])
     return None
 
+def compute_interaction_list(interactions, game=None):
+    """Returns the index of the winner of the Match"""
+    scores = compute_final_score(interactions, game)
+
+    if scores is not None:
+        if scores[0] == scores[1]:
+            return [0,0,1]  # No winner
+        if scores[0] > scores[1]:
+            return [1,0,0]
+        elif scores[0] < scores[1]:
+            return [0,1,0]
 
 def compute_cooperations(interactions):
     """Returns the count of cooperations by each player for a set of
