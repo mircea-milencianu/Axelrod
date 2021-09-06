@@ -68,14 +68,16 @@ class WinnerMatrix:
         if progress_bar:
             self.progress_bar = tqdm.tqdm(total=25, desc="Analysing")
 
-        df = pd.read_csv(filename)
+        self.df = pd.read_csv(filename)
+        self.wins_df = self.df.groupby(["Player name","Opponent name"])["Win"].sum().unstack()
+        p.pprint(self.wins_df)
         
-        p.pprint(df.tail())
-        p.pprint(df.dtypes)
+        # p.pprint(self.df.tail())
+        # p.pprint(self.df.dtypes)
 
-        self.build_match_results_matrix(df)
+        # self.build_match_results_matrix(df)
         
-        self.build_winner_pd(df)
+        self.build_winner_pd()
 
         if progress_bar:
             self.progress_bar.close()
@@ -89,15 +91,19 @@ class WinnerMatrix:
         ----------
             df: a pandas DataFrame holding the tournament results
         """
-        df_by_repetions = df.groupby(["Player name"])["Repetition"].sum()
-        p.pprint(df_by_repetions)
+        # df_by_repetions = df.groupby(["Player name"])["Repetition"].sum()
+        # p.pprint(df_by_repetions)
+        # p.pprint(df_by_repetions)
 
-        winners = pd.DataFrame(index=self.players, columns=self.players)
-        p.pprint(winners)
+    def calc_winner(self, player, opponent):
+        # df_by_players = self.df.groupby(["Player name","Opponent name"])["Win"].sum().unstack()
+        # p.pprint(df_by_players)
+        p.pprint("The current player is {} and his opponent is {}".format(player, opponent))
+        # p.pprint(df_by_players.at[player, opponent])
+        winner_list = [0,0,0]
+        return winner_list
 
-
-
-    def build_winner_pd(self, df):
+    def build_winner_pd(self):
         """
         Build the winner dataframe.
 
@@ -105,9 +111,13 @@ class WinnerMatrix:
         ----------
             df: a pandas DataFrame holding the tournament results
         """
-        df_by_players = df.groupby(["Player name","Opponent name"])["Win"].sum()
-        p.pprint(df_by_players)
-
+        winners = pd.DataFrame(index=self.players, columns=self.players)
+        for player in self.players:
+            for opponent in self.players:
+                winners.at[player, opponent] = self.calc_winner(player, opponent)
+                #winners.applymap(self.calc_winner(self))
+        
+        p.pprint(winners)
 
     def __eq__(self, other):
         """
