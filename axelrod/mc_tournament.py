@@ -27,7 +27,7 @@ from .result_matrix import ResultMatrix
 C, D = Action.C, Action.D
 
 
-class Tournament(object):
+class McTournament(object):
     def __init__(
         self,
         players: List[Player],
@@ -160,7 +160,7 @@ class Tournament(object):
             self._run_parallel(build_results=build_matrix, processes=processes)
 
         if build_matrix:
-            result_set = ResultMatrix(
+            result_matrix = ResultMatrix(
                 filename=self.filename,
                 players=[str(p) for p in self.players],
                 repetitions=self.repetitions,
@@ -183,7 +183,7 @@ class Tournament(object):
             os.close(self._temp_file_descriptor)
             os.remove(self.filename)
 
-        return result_set
+        return result_matrix
 
     def _run_serial(self, build_results: bool = True) -> bool:
         """Run all matches in serial."""

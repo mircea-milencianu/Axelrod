@@ -28,6 +28,8 @@ from axelrod.strategies import *
 from axelrod.deterministic_cache import DeterministicCache
 from axelrod.match_generator import *
 from axelrod.tournament import Tournament
+from axelrod.mc_tournament import McTournament
 from axelrod.result_set import ResultSet
+from axelrod.result_matrix import ResultMatrix
 from axelrod.ecosystem import Ecosystem
 from axelrod.fingerprint import AshlockFingerprint, TransitiveFingerprint
