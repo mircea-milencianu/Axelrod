@@ -2,9 +2,8 @@ import csv
 import logging
 import os
 import warnings
-import pprint
-import numpy as np
 
+import numpy as np
 
 from collections import defaultdict
 from multiprocessing import Process, Queue, cpu_count
@@ -34,7 +33,7 @@ class Tournament(object):
         name: str = "axelrod",
         game: Game = None,
         turns: int = None,
-        deviation: int = None, # variabila noua pentru distributii
+        deviation: int = None, # self deviation
         prob_end: float = None,
         repetitions: int = 10,
         noise: float = 0,
@@ -89,7 +88,6 @@ class Tournament(object):
         self.match_generator = MatchGenerator(
             players=players,
             turns=turns,
-            deviation=self.deviation,
             game=self.game,
             repetitions=self.repetitions,
             prob_end=prob_end,
@@ -100,7 +98,7 @@ class Tournament(object):
         )
         self._logger = logging.getLogger(__name__)
 
-        self.use_progress_bar = None
+        self.use_progress_bar = True
         self.filename = None  # type: Optional[str]
         self._temp_file_descriptor = None  # type: Optional[int]
 
@@ -116,28 +114,24 @@ class Tournament(object):
 
     def play(
         self,
-        build_results: bool = False,
+        build_results: bool = True,
         build_matrix: bool = True,
         filename: str = None,
         processes: int = None,
-        progress_bar: bool = False,
-    ) -> ResultMatrix:
+        progress_bar: bool = True,
+    ) -> ResultSet:
         """
         Plays the tournament and passes the results to the ResultSet class
-
         Parameters
         ----------
         build_results : bool
             whether or not to build a results set
-        build_matrix : bool
-            whether or not to build a winner matrix
         filename : string
             name of output file
         processes : integer
             The number of processes to be used for parallel processing
         progress_bar : bool
             Whether or not to create a progress bar which will be updated
-
         Returns
         -------
         axelrod.ResultSet
@@ -148,48 +142,45 @@ class Tournament(object):
 
         self.setup_output(filename)
 
-        if not build_matrix and not filename:
+        if not build_results and not filename:
             warnings.warn(
-                "Tournament matrix will not be accessible created since "
-                "build_matrix=False and no filename was supplied."
+                "Tournament results will not be accessible since "
+                "build_results=False and no filename was supplied."
             )
 
         if processes is None:
-            self._run_serial(build_results=build_matrix)
+            self._run_serial(build_results=build_results)
         else:
-            self._run_parallel(build_results=build_matrix, processes=processes)
+            self._run_parallel(build_results=build_results, processes=processes)
 
-        if build_matrix:
-            result_set = ResultMatrix(
+        result_set = None
+        if build_results:
+            result_set = ResultSet(
                 filename=self.filename,
                 players=[str(p) for p in self.players],
                 repetitions=self.repetitions,
                 processes=processes,
                 progress_bar=progress_bar,
             )
-        # Mai jos este apelata o clasa care proceseaza rezultatele;
-        # Deocamdata greu de integrat cu ce ne trebuie noua;
-        # Pe viitor poate fi utila deoarece scopul ei este sa proceseze rezultate mari care nu incap in memorie;
-        # if build_results:
-        #     result_set = ResultSet(
-        #         filename=self.filename,
-        #         players=[str(p) for p in self.players],
-        #         repetitions=self.repetitions,
-        #         processes=processes,
-        #         progress_bar=progress_bar,
-        #     )
+        if build_matrix:
+            result_matrix = ResultMatrix(
+                filename=self.filename,
+                players=[str(p) for p in self.players],
+                repetitions=self.repetitions,
+                processes=processes,
+                progress_bar=progress_bar,
+            )
         if self._temp_file_descriptor is not None:
             assert self.filename is not None
             os.close(self._temp_file_descriptor)
             os.remove(self.filename)
 
-        return result_set
+        return result_set, result_matrix
 
     def _run_serial(self, build_results: bool = True) -> bool:
         """Run all matches in serial."""
 
         chunks = self.match_generator.build_match_chunks()
-        pprint.pprint(chunks)
 
         out_file, writer = self._get_file_objects(build_results)
         progress_bar = self._get_progress_bar()
@@ -221,32 +212,33 @@ class Tournament(object):
                 "Repetition",
                 "Player name",
                 "Opponent name",
+                "Actions",
             ]
             if build_results:
                 header.extend(
                     [
                         "Score",
                         "Score difference",
-                        # "Score per turn",
-                        # "Score difference per turn",
-                        "Win",
                         "Turns",
-                        "Winner List"
-                        # "Initial cooperation",
-                        # "Cooperation count",
-                        # "CC count",
-                        # "CD count",
-                        # "DC count",
-                        # "DD count",
-                        # "CC to C count",
-                        # "CC to D count",
-                        # "CD to C count",
-                        # "CD to D count",
-                        # "DC to C count",
-                        # "DC to D count",
-                        # "DD to C count",
-                        # "DD to D count",
-                        # "Good partner",
+                        "Score per turn",
+                        "Score difference per turn",
+                        "Win",
+                        "Winner List",
+                        "Initial cooperation",
+                        "Cooperation count",
+                        "CC count",
+                        "CD count",
+                        "DC count",
+                        "DD count",
+                        "CC to C count",
+                        "CC to D count",
+                        "CD to C count",
+                        "CD to D count",
+                        "DC to C count",
+                        "DC to D count",
+                        "DD to C count",
+                        "DD to D count",
+                        "Good partner",
                     ]
                 )
 
@@ -260,11 +252,7 @@ class Tournament(object):
 
     def _write_interactions_to_file(self, results, writer):
         """Write the interactions to csv."""
-        #print("Starting to write results on csv.")
         for index_pair, interactions in results.items():
-            # print("index_pair: {} \n interactions: {}".format(
-            #     index_pair, interactions
-            # ))
             repetition = 0
             for interaction, results in interactions:
 
@@ -272,43 +260,45 @@ class Tournament(object):
                     (
                         scores,
                         score_diffs,
-                        winner_index,
                         turns,
+                        score_per_turns,
+                        score_diffs_per_turns,
+                        initial_cooperation,
+                        cooperations,
+                        state_distribution,
+                        state_to_action_distributions,
+                        winner_index,
                         win_list,
-
                     ) = results
-
-                #pprint.pprint(results)
                 for index, player_index in enumerate(index_pair):
                     opponent_index = index_pair[index - 1]
                     row = [self.num_interactions, player_index, opponent_index, repetition,
                            str(self.players[player_index]), str(self.players[opponent_index])]
-                    #history = actions_to_str([i[index] for i in interaction])
+                    history = actions_to_str([i[index] for i in interaction])
+                    row.append(history)
 
-                    #print(type(results[4]))
                     if results is not None:
                         row.append(scores[index])
                         row.append(score_diffs[index])
-                        # row.append(score_per_turns[index])
-                        # row.append(score_diffs_per_turns[index])
-                        row.append(int(winner_index is index))
                         row.append(turns)
+                        row.append(score_per_turns[index])
+                        row.append(score_diffs_per_turns[index])
+                        row.append(int(winner_index is index))
                         row.append(win_list)
+                        row.append(initial_cooperation[index])
+                        row.append(cooperations[index])
 
-                        # row.append(initial_cooperation[index])
-                        # row.append(cooperations[index])
+                        states = [(C, C), (C, D), (D, C), (D, D)]
+                        if index == 1:
+                            states = [s[::-1] for s in states]
+                        for state in states:
+                            row.append(state_distribution[state])
+                        for state in states:
+                            row.append(state_to_action_distributions[index][(state, C)])
+                            row.append(state_to_action_distributions[index][(state, D)])
 
-                        # states = [(C, C), (C, D), (D, C), (D, D)]
-                        # if index == 1:
-                        #     states = [s[::-1] for s in states]
-                        # for state in states:
-                        #     row.append(state_distribution[state])
-                        # for state in states:
-                        #     row.append(state_to_action_distributions[index][(state, C)])
-                        #     row.append(state_to_action_distributions[index][(state, D)])
+                        row.append(int(cooperations[index] >= cooperations[index - 1]))
 
-                        # row.append(int(cooperations[index] >= cooperations[index - 1]))
-                    #row.append(history)
                     writer.writerow(row)
                 repetition += 1
                 self.num_interactions += 1
@@ -316,7 +306,6 @@ class Tournament(object):
     def _run_parallel(self, processes: int = 2, build_results: bool = True) -> bool:
         """
         Run all matches in parallel
-
         Parameters
         ----------
         build_results : bool
@@ -342,7 +331,6 @@ class Tournament(object):
     def _n_workers(self, processes: int = 2) -> int:
         """
         Determines the number of parallel processes to use.
-
         Returns
         -------
         integer
@@ -362,7 +350,6 @@ class Tournament(object):
     ) -> bool:
         """
         Initiates the sub-processes to carry out parallel processing.
-
         Parameters
         ----------
         workers : integer
@@ -387,7 +374,6 @@ class Tournament(object):
     ):
         """
         Retrieves the matches from the parallel sub-processes
-
         Parameters
         ----------
         workers : integer
@@ -417,7 +403,6 @@ class Tournament(object):
     def _worker(self, work_queue: Queue, done_queue: Queue, build_results: bool = True):
         """
         The work for each parallel sub-process to execute.
-
         Parameters
         ----------
         work_queue : multiprocessing.Queue
@@ -436,87 +421,44 @@ class Tournament(object):
     def _play_matches(self, chunk, build_results=True):
         """
         Play matches in a given chunk.
-
         Parameters
         ----------
         chunk : tuple (index pair, match_parameters, repetitions)
             match_parameters are also a tuple: (turns, game, noise)
         build_results : bool
             whether or not to build a results set
-
         Returns
         -------
         interactions : dictionary
             Mapping player index pairs to results of matches:
-
                 (0, 1) -> [(C, D), (D, C),...]
         """
-        # Foloseste defaultdict pentru a grupa rezultatele.
         interactions = defaultdict(list)
         index_pair, match_params, repetitions, seed = chunk
-        pprint.pprint("index_pair: {}".format(index_pair))
-        #pprint.pprint("match_params: {}".format(match_params))
-
         p1_index, p2_index = index_pair
         player1 = self.players[p1_index].clone()
         player2 = self.players[p2_index].clone()
         match_params["players"] = (player1, player2)
         match_params["seed"] = seed
         for _ in range(repetitions):
-            #print("Mean turn value is: {} having the deviation {}".format(self.turns, self.deviation))
+
             if self.deviation is not None:
                 match_params["turns"] = int(np.random.default_rng().normal(self.turns, self.deviation, None))
             else:
                 match_params["turns"] = self.turns
-            pprint.pprint("Generated: {}".format(match_params["turns"]))
+
+            # print("Generated: {} turns for this match".format(match_params["turns"]))
+
             match = Match(**match_params)
             match.play()
-            #pprint.pprint("Winner: {}".format(match.winner()))
-            #pprint.pprint("Match result: {}".format(match.result))
-            #pprint.pprint("The score is: {}".format(match.final_score()))
-            #pprint.pprint("The number of turns is: {}".format(match.turns))
-
-            # if match.winner() is False:
-            #     print("The match ends in equality.")
 
             if build_results:
-                results = self._calc_new_results(match.result)
+                results = self._calculate_results(match.result)
             else:
                 results = None
 
             interactions[index_pair].append([match.result, results])
-        #pprint.pprint("interactions: {}".format(interactions))
         return interactions
-
-
-    def _calc_new_results(self, interactions):
-        """
-        Building the resutls for our custom case.
-        Working towards the winner matrix.
-        """
-        results = []
-        # Ordinea e importanta deoarece asa o sa fie procesate mai departe
-        # din cauza ca se foloseste append;
-
-        scores = iu.compute_final_score(interactions, self.game)
-        results.append(scores)
-
-        pprint.pprint(scores)
-        score_diffs = scores[0] - scores[1], scores[1] - scores[0]
-        results.append(score_diffs)
-
-        winner_index = iu.compute_winner_index(interactions, self.game)
-        results.append(winner_index)
-
-        turns = len(interactions)
-        results.append(turns)
-
-        interactions_result_list = iu.compute_interaction_list(interactions, self.game)
-        results.append(interactions_result_list)
-
-        return results
-
-
 
     def _calculate_results(self, interactions):
         results = []
@@ -552,6 +494,10 @@ class Tournament(object):
 
         winner_index = iu.compute_winner_index(interactions, self.game)
         results.append(winner_index)
+
+        ### new method to calculate the winner and return a list format
+        interactions_result_list = iu.compute_interaction_list(interactions, self.game)
+        results.append(interactions_result_list)
 
         return results
 

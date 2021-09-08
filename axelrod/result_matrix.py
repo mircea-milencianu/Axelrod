@@ -74,8 +74,6 @@ class ResultMatrix:
         self.df = pd.read_csv(filename)
         temp_df = self.df["Winner List"].apply((lambda x: ast.literal_eval(x)))
         self.df.update(temp_df)
-        # p.pprint(self.df)
-        # winners = self.build_winner_pd()
         
     def calc_winner(self, player, opponent):
         """
@@ -85,9 +83,8 @@ class ResultMatrix:
         for index, row in self.df.iterrows():
             if row["Player name"] == player and row["Opponent name"] == opponent:
                 winner_list =list(map(operator.add, winner_list, row["Winner List"]))
-        #p.pprint(winner_list)
-        p.pprint("{} against {}".format(player, opponent))
-        p.pprint("The final result for the interaction: {}".format(winner_list))
+        # p.pprint("{} against {}".format(player, opponent))
+        # p.pprint("The final result for the interaction: {}".format(winner_list))
         return winner_list
 
     def build_winner_pd(self):
@@ -102,9 +99,7 @@ class ResultMatrix:
         for player in self.players:
             for opponent in self.players:
                 winners.at[player, opponent] = self.calc_winner(player, opponent)
-                #winners.applymap(self.calc_winner(self))
-        # p.pprint("MATRICEA FINALA:")
-        # p.pprint(winners)
+
         self.pd_to_file(winners)
         return winners
 
