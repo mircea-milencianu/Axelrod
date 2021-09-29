@@ -72,20 +72,20 @@ class ResultMatrix:
             self.progress_bar = tqdm.tqdm(total=25, desc="Analysing")
 
         self.df = pd.read_csv(filename)
-        temp_df = self.df["Winner List"].apply((lambda x: ast.literal_eval(x)))
-        self.df.update(temp_df)
-        
-    def calc_winner(self, player, opponent):
-        """
-        Calculates the winner for a player -- opponent pair.
-        """
-        winner_list = [0,0,0]
-        for index, row in self.df.iterrows():
-            if row["Player name"] == player and row["Opponent name"] == opponent:
-                winner_list =list(map(operator.add, winner_list, row["Winner List"]))
-        # p.pprint("{} against {}".format(player, opponent))
-        # p.pprint("The final result for the interaction: {}".format(winner_list))
-        return winner_list
+        # temp_df = self.df["Winner List"].apply((lambda x: ast.literal_eval(x)))
+        # self.df.update(temp_df)
+
+    # def calc_winner(self):
+    #     """
+    #     Calculates the winner for a player -- opponent pair.
+    #     """
+
+
+    #         if row["Player name"] == player and row["Opponent name"] == opponent:
+    #             winner_list =list(map(operator.add, winner_list, row["Winner List"]))
+    #     # p.pprint("{} against {}".format(player, opponent))
+    #     # p.pprint("The final result for the interaction: {}".format(winner_list))
+    #     return winner_list
 
     def build_winner_pd(self):
         """
@@ -96,13 +96,23 @@ class ResultMatrix:
             df: a pandas DataFrame holding the tournament results
         """
         winners = pd.DataFrame(index=self.players, columns=self.players)
-        for player in self.players:
-            for opponent in self.players:
-                winners.at[player, opponent] = self.calc_winner(player, opponent)
-
+        winner_list = [0,0,0]
+        for _, row in self.df.iterrows():
+            winners.at[row["Player name"], row["Opponent name"]]
+            win_list = self.compute_interaction_list(row["Score difference"])
         self.pd_to_file(winners)
         return winners
 
+    def compute_interaction_list(self, scores_diff):
+        """Returns the index of the winner of the Match"""
+
+        if scores_diff is not None:
+            if scores_diff == 0:
+                return [0,0,1]  # No winner
+            if scores_diff > 0:
+                return [1,0,0]
+            elif scores_diff < 0:
+                return [0,1,0]
 
     def pd_to_file(self, pd):
         """
@@ -110,6 +120,6 @@ class ResultMatrix:
         """
         if not os.path.exists('results/'):
             os.makedirs('results/')
-        
+
         pd.to_csv("results/winners_montecarlo_{}.csv".format(self.repetitions))
         #self.df.to_csv("results/normed_{}.csv".format( ))
