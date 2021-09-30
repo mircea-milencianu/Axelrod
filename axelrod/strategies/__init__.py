@@ -81,6 +81,33 @@ axelrod_first_strategies = [
     FirstByAnonymous,
     Random,
 ]
+axelrod_second_strategies = [
+    SecondByAppold,
+    SecondByBlack,
+    SecondByBorufsen,
+    SecondByCave,
+    SecondByChampion,
+    SecondByColbert,
+    SecondByEatherley,
+    SecondByGetzler,
+    SecondByGladstein,
+    SecondByGraaskampKatzen,
+    SecondByHarrington,
+    SecondByKluepfel,
+    SecondByLeyvraz,
+    SecondByMikkelson,
+    SecondByGrofman,
+    SecondByTidemanAndChieruzzi,
+    SecondByRichardHufford,
+    SecondByRowsam,
+    SecondByTester,
+    SecondByTranquilizer,
+    SecondByWeiner,
+    SecondByWhite,
+    SecondByWmAdams,
+    SecondByYamachi,
+
+]
 basic_strategies = [s for s in all_strategies if Classifiers.is_basic(s())]
 strategies = [s for s in all_strategies if Classifiers.obey_axelrod(s())]
 

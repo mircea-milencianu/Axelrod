@@ -3,6 +3,7 @@ import csv
 import operator
 import ast
 import os
+import math
 
 from collections import Counter, namedtuple
 from multiprocessing import cpu_count
@@ -66,12 +67,8 @@ class ResultMatrix:
         """
         self.filename = filename
         self.players, self.repetitions = players, repetitions
-        self.num_players = len(self.players)
-
         if progress_bar:
             self.progress_bar = tqdm.tqdm(total=25, desc="Analysing")
-
-        self.df = pd.read_csv(filename)
         # temp_df = self.df["Winner List"].apply((lambda x: ast.literal_eval(x)))
         # self.df.update(temp_df)
 
@@ -87,6 +84,12 @@ class ResultMatrix:
     #     # p.pprint("The final result for the interaction: {}".format(winner_list))
     #     return winner_list
 
+    def create(self):
+        """Create the matrix"""
+        self.df = pd.read_csv(self.filename)
+        winners = self.build_winner_pd()
+        self.pd_to_file(winners)
+
     def build_winner_pd(self):
         """
         Build the winner dataframe.
@@ -96,12 +99,37 @@ class ResultMatrix:
             df: a pandas DataFrame holding the tournament results
         """
         winners = pd.DataFrame(index=self.players, columns=self.players)
-        winner_list = [0,0,0]
+        self.init_custom_value(winners, [0,0,0])
         for _, row in self.df.iterrows():
-            winners.at[row["Player name"], row["Opponent name"]]
-            win_list = self.compute_interaction_list(row["Score difference"])
-        self.pd_to_file(winners)
+            # p.pprint("calculating for: {} against {}".format(row["Player name"], row["Opponent name"]))
+            winners.at[row["Player name"], row["Opponent name"]] = self.sum_list(
+                row["Score difference"],
+                winners.at[row["Player name"], row["Opponent name"]])
+
+        self.divide_main_diagonal(winners)
         return winners
+
+    def sum_list(self, scores_diff, temp_list):
+        """ 
+            Creates and adds the lists based on the score diff 
+            of the interaction.
+        """
+        single_list = self.compute_interaction_list(scores_diff)
+        new_list = list(map(operator.add, temp_list, single_list))
+        # p.pprint(new_list)
+
+        return new_list
+    
+    def divide_main_diagonal(self, pd):
+        """divide the elements within the list of the main diagonal"""
+        for p in self.players:
+            pd.at[p, p] = [int(x/2) for x in pd.at[p,p]]
+
+    def init_custom_value(self, pd, value):
+        """Add the value [0,0,0] to the matrix."""
+        for p1 in self.players:
+            for p2 in self.players:
+                pd.at[p1, p2] = value
 
     def compute_interaction_list(self, scores_diff):
         """Returns the index of the winner of the Match"""
@@ -113,6 +141,7 @@ class ResultMatrix:
                 return [1,0,0]
             elif scores_diff < 0:
                 return [0,1,0]
+  
 
     def pd_to_file(self, pd):
         """

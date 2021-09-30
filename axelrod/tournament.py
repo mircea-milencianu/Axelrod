@@ -115,7 +115,7 @@ class Tournament(object):
     def play(
         self,
         build_results: bool = True,
-        build_matrix: bool = True,
+        build_matrix: bool = False,
         filename: str = None,
         processes: int = None,
         progress_bar: bool = True,
