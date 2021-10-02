@@ -115,7 +115,6 @@ class Tournament(object):
     def play(
         self,
         build_results: bool = True,
-        build_matrix: bool = False,
         filename: str = None,
         processes: int = None,
         progress_bar: bool = True,
@@ -162,20 +161,12 @@ class Tournament(object):
                 processes=processes,
                 progress_bar=progress_bar,
             )
-        if build_matrix:
-            result_matrix = ResultMatrix(
-                filename=self.filename,
-                players=[str(p) for p in self.players],
-                repetitions=self.repetitions,
-                processes=processes,
-                progress_bar=progress_bar,
-            )
         if self._temp_file_descriptor is not None:
             assert self.filename is not None
             os.close(self._temp_file_descriptor)
             os.remove(self.filename)
 
-        return result_set, result_matrix
+        return result_set
 
     def _run_serial(self, build_results: bool = True) -> bool:
         """Run all matches in serial."""
