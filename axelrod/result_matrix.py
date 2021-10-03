@@ -67,6 +67,7 @@ class ResultMatrix:
         """
         self.filename = filename
         self.players, self.repetitions = players, repetitions
+        self.player_names = [player.name for player in players]
         if progress_bar:
             self.progress_bar = tqdm.tqdm(total=25, desc="Analysing")
         # temp_df = self.df["Winner List"].apply((lambda x: ast.literal_eval(x)))
@@ -98,7 +99,7 @@ class ResultMatrix:
         ----------
             df: a pandas DataFrame holding the tournament results
         """
-        winners = pd.DataFrame(index=self.players, columns=self.players)
+        winners = pd.DataFrame(index=self.player_names, columns=self.player_names)
         self.init_custom_value(winners, [0,0,0])
         for _, row in self.df.iterrows():
             # p.pprint("calculating for: {} against {}".format(row["Player name"], row["Opponent name"]))
@@ -123,13 +124,15 @@ class ResultMatrix:
     def divide_main_diagonal(self, pd):
         """divide the elements within the list of the main diagonal"""
         for p in self.players:
-            pd.at[p, p] = [int(x/2) for x in pd.at[p,p]]
+            
+            pd.at[p.name, p.name] = [int(x/2) for x in pd.at[p.name,p.name]]
 
     def init_custom_value(self, pd, value):
-        """Add the value [0,0,0] to the matrix."""
+        """Add the value to each element of the matrix."""
         for p1 in self.players:
             for p2 in self.players:
-                pd.at[p1, p2] = value
+                #p.pprint(p1.name)
+                pd.at[p1.name,p2.name] = value
 
     def compute_interaction_list(self, scores_diff):
         """Returns the index of the winner of the Match"""
