@@ -99,6 +99,7 @@ class ResultMatrix:
         ----------
             df: a pandas DataFrame holding the tournament results
         """
+        p.pprint("players in this tournament: {}".format(self.player_names))
         winners = pd.DataFrame(index=self.player_names, columns=self.player_names)
         self.init_custom_value(winners, [0,0,0])
         for _, row in self.df.iterrows():
