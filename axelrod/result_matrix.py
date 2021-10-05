@@ -99,14 +99,24 @@ class ResultMatrix:
         ----------
             df: a pandas DataFrame holding the tournament results
         """
+        #player_names = self.df["Player name"].unique()
+        
         p.pprint("players in this tournament: {}".format(self.player_names))
         winners = pd.DataFrame(index=self.player_names, columns=self.player_names)
         self.init_custom_value(winners, [0,0,0])
         for _, row in self.df.iterrows():
-            # p.pprint("calculating for: {} against {}".format(row["Player name"], row["Opponent name"]))
-            winners.at[row["Player name"], row["Opponent name"]] = self.sum_list(
+            for pl in self.player_names:
+                if pl in row["Player name"]:
+                    current_pl = pl
+                if pl in row["Opponent name"]:
+                    current_op = pl
+            winners.at[current_pl, current_op] = self.sum_list(
                 row["Score difference"],
-                winners.at[row["Player name"], row["Opponent name"]])
+                winners.at[current_pl, current_op])
+            
+            # winners.at[row["Player name"], row["Opponent name"]] = self.sum_list(
+            #     row["Score difference"],
+            #     winners.at[row["Player name"], row["Opponent name"]])
 
         self.divide_main_diagonal(winners)
         return winners
@@ -125,7 +135,6 @@ class ResultMatrix:
     def divide_main_diagonal(self, pd):
         """divide the elements within the list of the main diagonal"""
         for p in self.players:
-            
             pd.at[p.name, p.name] = [int(x/2) for x in pd.at[p.name,p.name]]
 
     def init_custom_value(self, pd, value):
