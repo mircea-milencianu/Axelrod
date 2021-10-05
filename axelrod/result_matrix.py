@@ -47,7 +47,7 @@ class ResultMatrix:
     """
 
     def __init__(
-        self, filename, players, repetitions, processes=None, progress_bar=False
+        self, filename, players, repetitions, tour_type, processes=None, progress_bar=False
     ):
         """
         Parameters
@@ -68,6 +68,7 @@ class ResultMatrix:
         self.filename = filename
         self.players, self.repetitions = players, repetitions
         self.player_names = [player.name for player in players]
+        self.tour_type = tour_type
         if progress_bar:
             self.progress_bar = tqdm.tqdm(total=25, desc="Analysing")
         # temp_df = self.df["Winner List"].apply((lambda x: ast.literal_eval(x)))
@@ -163,5 +164,5 @@ class ResultMatrix:
         if not os.path.exists('results/'):
             os.makedirs('results/')
 
-        pd.to_csv("results/winners_montecarlo_{}.csv".format(self.repetitions))
+        pd.to_csv("results/winners_{}_{}.csv".format(self.tour_type, self.repetitions))
         #self.df.to_csv("results/normed_{}.csv".format( ))
