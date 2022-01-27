@@ -33,13 +33,15 @@ class Tournament(object):
         name: str = "axelrod",
         game: Game = None,
         turns: int = None,
-        deviation: int = None, # self deviation
+        normal: bool = None,
+        uniform: bool = None,
+        deviation: int = None,  # self deviation
         prob_end: float = None,
         repetitions: int = 10,
         noise: float = 0,
         edges: List[Tuple] = None,
         match_attributes: dict = None,
-        seed: int = None
+        seed: int = None,
     ) -> None:
         """
         Parameters
@@ -83,6 +85,8 @@ class Tournament(object):
             turns = DEFAULT_TURNS
 
         self.turns = turns
+        self.normal = normal
+        self.uniform = uniform
         self.deviation = deviation
         self.prob_end = prob_end
         self.match_generator = MatchGenerator(
@@ -94,7 +98,7 @@ class Tournament(object):
             noise=self.noise,
             edges=edges,
             match_attributes=match_attributes,
-            seed=self.seed
+            seed=self.seed,
         )
         self._logger = logging.getLogger(__name__)
 
@@ -104,7 +108,7 @@ class Tournament(object):
 
     def setup_output(self, filename=None):
         """assign/create `filename` to `self`. If file should be deleted once
-        `play` is finished, assign a file descriptor. """
+        `play` is finished, assign a file descriptor."""
         temp_file_descriptor = None
         if filename is None:
             temp_file_descriptor, filename = mkstemp()
@@ -263,8 +267,14 @@ class Tournament(object):
                     ) = results
                 for index, player_index in enumerate(index_pair):
                     opponent_index = index_pair[index - 1]
-                    row = [self.num_interactions, player_index, opponent_index, repetition,
-                           str(self.players[player_index]), str(self.players[opponent_index])]
+                    row = [
+                        self.num_interactions,
+                        player_index,
+                        opponent_index,
+                        repetition,
+                        str(self.players[player_index]),
+                        str(self.players[opponent_index]),
+                    ]
                     history = actions_to_str([i[index] for i in interaction])
                     row.append(history)
 
@@ -433,8 +443,14 @@ class Tournament(object):
         match_params["seed"] = seed
         for _ in range(repetitions):
 
-            if self.deviation is not None:
-                match_params["turns"] = int(np.random.default_rng().normal(self.turns, self.deviation, None))
+            if self.normal is True:
+                match_params["turns"] = int(
+                    np.random.default_rng().normal(self.turns, self.deviation, None)
+                )
+            elif self.uniform is True:
+                low = self.turns - self.deviation
+                high = self.turns + self.deviation + 1
+                match_params["turns"] = int(np.random.uniform(low, high))
             else:
                 match_params["turns"] = self.turns
 

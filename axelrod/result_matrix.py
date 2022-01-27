@@ -1,4 +1,3 @@
-
 import csv
 import operator
 import ast
@@ -47,7 +46,13 @@ class ResultMatrix:
     """
 
     def __init__(
-        self, filename, players, repetitions, tour_type, processes=None, progress_bar=False
+        self,
+        filename,
+        players,
+        repetitions,
+        tour_type,
+        processes=None,
+        progress_bar=False,
     ):
         """
         Parameters
@@ -79,7 +84,6 @@ class ResultMatrix:
     #     Calculates the winner for a player -- opponent pair.
     #     """
 
-
     #         if row["Player name"] == player and row["Opponent name"] == opponent:
     #             winner_list =list(map(operator.add, winner_list, row["Winner List"]))
     #     # p.pprint("{} against {}".format(player, opponent))
@@ -89,8 +93,9 @@ class ResultMatrix:
     def create(self):
         """Create the matrix"""
         self.df = pd.read_csv(self.filename)
-        winners = self.build_winner_pd()
-        self.pd_to_file(winners)
+        winners, utility_vectors = self.build_winner_pd()
+        self.pd_to_file(winners, "winners")
+        self.pd_to_file(utility_vectors, "utility_vectors")
 
     def build_winner_pd(self):
         """
@@ -100,69 +105,96 @@ class ResultMatrix:
         ----------
             df: a pandas DataFrame holding the tournament results
         """
-        #player_names = self.df["Player name"].unique()
-        
+        # player_names = self.df["Player name"].unique()
+
         p.pprint("players in this tournament: {}".format(self.player_names))
         winners = pd.DataFrame(index=self.player_names, columns=self.player_names)
-        self.init_custom_value(winners, [0,0,0])
+        utility_vectors = pd.DataFrame(
+            index=self.player_names, columns=self.player_names
+        )
+
+        self.init_custom_value(winners, [0, 0, 0])
         for _, row in self.df.iterrows():
             for pl in self.player_names:
                 if pl in row["Player name"]:
                     current_pl = pl
                 if pl in row["Opponent name"]:
                     current_op = pl
-            winners.at[current_pl, current_op] = self.sum_list(
-                row["Score difference"],
-                winners.at[current_pl, current_op])
-            
+            utility_vectors.at[current_pl, current_op] = self.build_interaction_vector(
+                row["Score"], utility_vectors.at[current_pl, current_op]
+            )
+            winners.at[current_pl, current_op] = self.sum_lists(
+                row["Score difference"], winners.at[current_pl, current_op]
+            )
+
             # winners.at[row["Player name"], row["Opponent name"]] = self.sum_list(
             #     row["Score difference"],
             #     winners.at[row["Player name"], row["Opponent name"]])
 
         self.divide_main_diagonal(winners)
-        return winners
+        self.correct_main_diagonal(utility_vectors)
+        return winners, utility_vectors
 
-    def sum_list(self, scores_diff, temp_list):
-        """ 
-            Creates and adds the lists based on the score diff 
-            of the interaction.
+    def build_interaction_vector(self, interaction_score, current_vector):
+        """
+        Builds a list containing all the payoffs from this pairs interaction
+        """
+        print(interaction_score)
+        if isinstance(current_vector, list):
+            current_vector.append(interaction_score)
+        elif math.isnan(current_vector):
+            current_vector = []
+            current_vector.append(interaction_score)
+        print(current_vector)
+        return current_vector
+
+    def sum_lists(self, scores_diff, temp_list):
+        """
+        Creates and adds the lists based on the score diff
+        of the interaction.
         """
         single_list = self.compute_interaction_list(scores_diff)
         new_list = list(map(operator.add, temp_list, single_list))
         # p.pprint(new_list)
 
         return new_list
-    
+
+    def correct_main_diagonal(self, pd):
+        """eliminate duplicate elements from the main diagonal vectors"""
+        for p in self.players:
+            pd.at[p.name, p.name] = pd.at[p.name, p.name][::2]
+
     def divide_main_diagonal(self, pd):
         """divide the elements within the list of the main diagonal"""
         for p in self.players:
-            pd.at[p.name, p.name] = [int(x/2) for x in pd.at[p.name,p.name]]
+            pd.at[p.name, p.name] = [int(x / 2) for x in pd.at[p.name, p.name]]
 
     def init_custom_value(self, pd, value):
         """Add the value to each element of the matrix."""
         for p1 in self.players:
             for p2 in self.players:
-                #p.pprint(p1.name)
-                pd.at[p1.name,p2.name] = value
+                # p.pprint(p1.name)
+                pd.at[p1.name, p2.name] = value
 
     def compute_interaction_list(self, scores_diff):
         """Returns the index of the winner of the Match"""
 
         if scores_diff is not None:
             if scores_diff == 0:
-                return [0,0,1]  # No winner
+                return [0, 0, 1]  # No winner
             if scores_diff > 0:
-                return [1,0,0]
+                return [1, 0, 0]
             elif scores_diff < 0:
-                return [0,1,0]
-  
+                return [0, 1, 0]
 
-    def pd_to_file(self, pd):
+    def pd_to_file(self, pd, pd_purpose):
         """
         Write pd objects containing the averages to csv file.
         """
-        if not os.path.exists('results/'):
-            os.makedirs('results/')
+        if not os.path.exists("results/"):
+            os.makedirs("results/")
 
-        pd.to_csv("results/winners_{}_{}.csv".format(self.tour_type, self.repetitions))
-        #self.df.to_csv("results/normed_{}.csv".format( ))
+        pd.to_csv(
+            "results/{}_{}_{}.csv".format(pd_purpose, self.tour_type, self.repetitions)
+        )
+        # self.df.to_csv("results/normed_{}.csv".format( ))
