@@ -93,9 +93,10 @@ class ResultMatrix:
     def create(self):
         """Create the matrix"""
         self.df = pd.read_csv(self.filename)
-        winners, utility_vectors = self.build_winner_pd()
+        winners, utility_vectors, utility_per_turn = self.build_winner_pd()
         self.pd_to_file(winners, "winners")
         self.pd_to_file(utility_vectors, "utility_vectors")
+        self.pd_to_file(utility_per_turn, "utility_per_turn_vectors")
 
     def build_winner_pd(self):
         """
@@ -107,19 +108,26 @@ class ResultMatrix:
         """
         # player_names = self.df["Player name"].unique()
 
-        p.pprint("players in this tournament: {}".format(self.player_names))
         winners = pd.DataFrame(index=self.player_names, columns=self.player_names)
         utility_vectors = pd.DataFrame(
             index=self.player_names, columns=self.player_names
         )
-
+        utility_per_turn = pd.DataFrame(
+            index=self.player_names, columns=self.player_names
+        )
         self.init_custom_value(winners, [0, 0, 0])
+        # basically going over every row and applying the functions we need for creating
+        # meaningful matrices; also theres a trick to keep the names the same, 
+        # as some differences might appear because of different configuration parameters;
         for _, row in self.df.iterrows():
             for pl in self.player_names:
                 if pl in row["Player name"]:
                     current_pl = pl
                 if pl in row["Opponent name"]:
                     current_op = pl
+            utility_per_turn.at[current_pl, current_op] = self.build_interaction_vector(
+                row["Score per turn"], utility_per_turn.at[current_pl, current_op]
+            )
             utility_vectors.at[current_pl, current_op] = self.build_interaction_vector(
                 row["Score"], utility_vectors.at[current_pl, current_op]
             )
@@ -133,19 +141,19 @@ class ResultMatrix:
 
         self.divide_main_diagonal(winners)
         self.correct_main_diagonal(utility_vectors)
-        return winners, utility_vectors
+        return winners, utility_vectors, utility_per_turn
 
     def build_interaction_vector(self, interaction_score, current_vector):
         """
         Builds a list containing all the payoffs from this pairs interaction
         """
-        print(interaction_score)
+        # print(interaction_score)
         if isinstance(current_vector, list):
             current_vector.append(interaction_score)
         elif math.isnan(current_vector):
             current_vector = []
             current_vector.append(interaction_score)
-        print(current_vector)
+        # print(current_vector)
         return current_vector
 
     def sum_lists(self, scores_diff, temp_list):
