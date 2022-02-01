@@ -51,6 +51,7 @@ class ResultMatrix:
         players,
         repetitions,
         tour_type,
+        run_type,
         processes=None,
         progress_bar=False,
     ):
@@ -74,6 +75,7 @@ class ResultMatrix:
         self.players, self.repetitions = players, repetitions
         self.player_names = [player.name for player in players]
         self.tour_type = tour_type
+        self.run_type = run_type
         if progress_bar:
             self.progress_bar = tqdm.tqdm(total=25, desc="Analysing")
         # temp_df = self.df["Winner List"].apply((lambda x: ast.literal_eval(x)))
@@ -93,10 +95,8 @@ class ResultMatrix:
     def create(self):
         """Create the matrix"""
         self.df = pd.read_csv(self.filename)
-        winners, utility_vectors, utility_per_turn = self.build_winner_pd()
-        self.pd_to_file(winners, "winners")
-        self.pd_to_file(utility_vectors, "utility_vectors")
-        self.pd_to_file(utility_per_turn, "utility_per_turn_vectors")
+        self.build_winner_pd()
+
 
     def build_winner_pd(self):
         """
@@ -135,13 +135,15 @@ class ResultMatrix:
                 row["Score difference"], winners.at[current_pl, current_op]
             )
 
-            # winners.at[row["Player name"], row["Opponent name"]] = self.sum_list(
-            #     row["Score difference"],
-            #     winners.at[row["Player name"], row["Opponent name"]])
-
         self.divide_main_diagonal(winners)
-        self.correct_main_diagonal(utility_vectors)
-        return winners, utility_vectors, utility_per_turn
+        self.pd_to_file(self.correct_main_diagonal(utility_vectors, "utility_vectors"),  "inv_main_diag_utility_vectors")
+        self.pd_to_file(self.correct_main_diagonal(utility_per_turn, "utility_per_turn"), "inv_main_diag_utility_per_turn_vectors")
+
+        self.pd_to_file(winners, "winners")
+        self.pd_to_file(utility_vectors, "utility_vectors")
+        self.pd_to_file(utility_per_turn, "utility_per_turn_vectors")
+
+
 
     def build_interaction_vector(self, interaction_score, current_vector):
         """
@@ -167,22 +169,35 @@ class ResultMatrix:
 
         return new_list
 
-    def correct_main_diagonal(self, pd):
-        """eliminate duplicate elements from the main diagonal vectors"""
-        for p in self.players:
-            pd.at[p.name, p.name] = pd.at[p.name, p.name][::2]
+    def correct_main_diagonal(self, df, df_name):
+        """
+        eliminate duplicate elements from the main diagonal vectors
+        slicing ranges pandas -- [start:stop:step]
 
-    def divide_main_diagonal(self, pd):
+        based on the order of the interactions 
+        """
+        column_name = "{} inverse main diagonal".format(df_name)
+        main_diag_df = pd.DataFrame(index=self.player_names ,columns=[column_name])
+        # print(main_diag_df)
+        for p in self.players:
+            main_diag_df.at[ p.name, column_name] = df.at[p.name, p.name][1::2]
+            # print(temp_series)
+            # print(df.at[p.name, p.name])
+            df.at[p.name, p.name] = df.at[p.name, p.name][::2] # going over a row in the main diagonal and selecting the second elements
+        
+        return main_diag_df
+
+    def divide_main_diagonal(self, df):
         """divide the elements within the list of the main diagonal"""
         for p in self.players:
-            pd.at[p.name, p.name] = [int(x / 2) for x in pd.at[p.name, p.name]]
+            df.at[p.name, p.name] = [int(x / 2) for x in df.at[p.name, p.name]]
 
-    def init_custom_value(self, pd, value):
+    def init_custom_value(self, df, value):
         """Add the value to each element of the matrix."""
         for p1 in self.players:
             for p2 in self.players:
                 # p.pprint(p1.name)
-                pd.at[p1.name, p2.name] = value
+                df.at[p1.name, p2.name] = value
 
     def compute_interaction_list(self, scores_diff):
         """Returns the index of the winner of the Match"""
@@ -195,14 +210,14 @@ class ResultMatrix:
             elif scores_diff < 0:
                 return [0, 1, 0]
 
-    def pd_to_file(self, pd, pd_purpose):
+    def pd_to_file(self, pd, pd_type):
         """
         Write pd objects containing the averages to csv file.
         """
-        if not os.path.exists("results/"):
-            os.makedirs("results/")
+        if not os.path.exists("results_{}/".format(self.run_type)):
+            os.makedirs("results_{}/".format(self.run_type))
 
         pd.to_csv(
-            "results/{}_{}_{}.csv".format(pd_purpose, self.tour_type, self.repetitions)
+            "results_{}/{}_{}_{}.csv".format(self.run_type, pd_type, self.tour_type, self.repetitions)
         )
         # self.df.to_csv("results/normed_{}.csv".format( ))
