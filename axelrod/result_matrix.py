@@ -50,7 +50,7 @@ class ResultMatrix:
         filename,
         players,
         repetitions,
-        tour_type,
+        deviation,
         run_type,
         processes=None,
         progress_bar=False,
@@ -74,7 +74,7 @@ class ResultMatrix:
         self.filename = filename
         self.players, self.repetitions = players, repetitions
         self.player_names = [player.name for player in players]
-        self.tour_type = tour_type
+        self.deviation = deviation
         self.run_type = run_type
         if progress_bar:
             self.progress_bar = tqdm.tqdm(total=25, desc="Analysing")
@@ -126,7 +126,7 @@ class ResultMatrix:
                 if pl in row["Opponent name"]:
                     current_op = pl
             utility_per_turn.at[current_pl, current_op] = self.build_interaction_vector(
-                row["Score per turn"], utility_per_turn.at[current_pl, current_op]
+                round(row["Score per turn"], 6), utility_per_turn.at[current_pl, current_op]
             )
             utility_vectors.at[current_pl, current_op] = self.build_interaction_vector(
                 row["Score"], utility_vectors.at[current_pl, current_op]
@@ -214,10 +214,10 @@ class ResultMatrix:
         """
         Write pd objects containing the averages to csv file.
         """
-        if not os.path.exists("results_{}/".format(self.run_type)):
-            os.makedirs("results_{}/".format(self.run_type))
+        if not os.path.exists("results/deviation={}/".format(self.deviation)):
+            os.makedirs("results/deviation={}/".format(self.deviation))
 
         pd.to_csv(
-            "results_{}/{}_{}_{}.csv".format(self.run_type, pd_type, self.tour_type, self.repetitions)
+            "results/deviation={}/{}_{}.csv".format(self.deviation, self.run_type, pd_type)
         )
         # self.df.to_csv("results/normed_{}.csv".format( ))
