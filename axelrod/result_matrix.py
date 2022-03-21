@@ -214,10 +214,10 @@ class ResultMatrix:
         """
         Write pd objects containing the averages to csv file.
         """
-        if not os.path.exists("results/deviation={}/".format(self.deviation)):
-            os.makedirs("results/deviation={}/".format(self.deviation))
+        if not os.path.exists("results_firstAndSecond/deviation={}/".format(self.deviation)):
+            os.makedirs("results_firstAndSecond/deviation={}/".format(self.deviation))
 
         pd.to_csv(
-            "results/deviation={}/{}_{}.csv".format(self.deviation, self.run_type, pd_type)
+            "results_firstAndSecond/deviation={}/{}_{}.csv".format(self.deviation, self.run_type, pd_type)
         )
         # self.df.to_csv("results/normed_{}.csv".format( ))
