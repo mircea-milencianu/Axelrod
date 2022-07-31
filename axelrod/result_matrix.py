@@ -50,9 +50,8 @@ class ResultMatrix:
         filename,
         players,
         repetitions,
-        deviation,
-        run_type,
-        processes=None,
+        run_scope,
+        tour_type,
         progress_bar=False,
     ):
         """
@@ -74,8 +73,8 @@ class ResultMatrix:
         self.filename = filename
         self.players, self.repetitions = players, repetitions
         self.player_names = [player.name for player in players]
-        self.deviation = deviation
-        self.run_type = run_type
+        self.run_scope = run_scope
+        self.tour_type = tour_type
         if progress_bar:
             self.progress_bar = tqdm.tqdm(total=25, desc="Analysing")
         # temp_df = self.df["Winner List"].apply((lambda x: ast.literal_eval(x)))
@@ -95,10 +94,10 @@ class ResultMatrix:
     def create(self):
         """Create the matrix"""
         self.df = pd.read_csv(self.filename)
-        self.build_winner_pd()
+        self.build_pd()
 
 
-    def build_winner_pd(self):
+    def build_pd(self):
         """
         Build the winner dataframe.
 
@@ -218,12 +217,12 @@ class ResultMatrix:
         #     os.makedirs("results_firstAndSecond/deviation={}/".format(self.deviation))
 
         # pd.to_csv(
-        #     "results_firstAndSecond/deviation={}/{}_{}.csv".format(self.deviation, self.run_type, pd_type)
+        #     "results_firstAndSecond/deviation={}/{}_{}.csv".format(self.deviation, self.run_scope, pd_type)
         # )
-        if not os.path.exists("results_dev/deviation={}/".format(self.deviation)):
-            os.makedirs("results_dev/deviation={}/".format(self.deviation))
+        if not os.path.exists("results_{}/".format(self.tour_type )):
+            os.makedirs("results_{}/".format(self.tour_type))
 
         pd.to_csv(
-            "results_dev/deviation={}/{}_{}.csv".format(self.deviation, self.run_type, pd_type)
+            "results_{}/{}_{}.csv".format(self.tour_type, self.run_scope, pd_type)
         )
         # self.df.to_csv("results/normed_{}.csv".format( ))
