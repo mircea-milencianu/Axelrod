@@ -122,17 +122,17 @@ class ResultMatrix:
         for _, row in self.df.iterrows():
             for pl in self.player_names:
                 if pl in row["Player name"]:
-                    current_pl = pl
+                    player_name = pl
                 if pl in row["Opponent name"]:
-                    current_op = pl
-            utility_per_turn.at[current_pl, current_op] = self.build_interaction_vector(
-                round(row["Score per turn"], 6), utility_per_turn.at[current_pl, current_op]
+                    opponent_name = pl
+            utility_per_turn.at[player_name, opponent_name] = self.build_interaction_vector(
+                round(row["Score per turn"], 6), utility_per_turn.at[player_name, opponent_name]
             )
-            utility_vectors.at[current_pl, current_op] = self.build_interaction_vector(
-                row["Score"], utility_vectors.at[current_pl, current_op]
+            utility_vectors.at[player_name, opponent_name] = self.build_interaction_vector(
+                row["Score"], utility_vectors.at[player_name, opponent_name]
             )
-            winners.at[current_pl, current_op] = self.sum_lists(
-                row["Score difference"], winners.at[current_pl, current_op]
+            winners.at[player_name, opponent_name] = self.sum_lists(
+                row["Score difference"], winners.at[player_name, opponent_name]
             )
 
         self.divide_main_diagonal(winners)
@@ -214,10 +214,16 @@ class ResultMatrix:
         """
         Write pd objects containing the averages to csv file.
         """
-        if not os.path.exists("results_firstAndSecond/deviation={}/".format(self.deviation)):
-            os.makedirs("results_firstAndSecond/deviation={}/".format(self.deviation))
+        # if not os.path.exists("results_firstAndSecond/deviation={}/".format(self.deviation)):
+        #     os.makedirs("results_firstAndSecond/deviation={}/".format(self.deviation))
+
+        # pd.to_csv(
+        #     "results_firstAndSecond/deviation={}/{}_{}.csv".format(self.deviation, self.run_type, pd_type)
+        # )
+        if not os.path.exists("results_dev/deviation={}/".format(self.deviation)):
+            os.makedirs("results_dev/deviation={}/".format(self.deviation))
 
         pd.to_csv(
-            "results_firstAndSecond/deviation={}/{}_{}.csv".format(self.deviation, self.run_type, pd_type)
+            "results_dev/deviation={}/{}_{}.csv".format(self.deviation, self.run_type, pd_type)
         )
         # self.df.to_csv("results/normed_{}.csv".format( ))

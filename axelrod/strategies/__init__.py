@@ -34,31 +34,32 @@ from .meta import (
     NiceMetaWinnerEnsemble,
 )
 
-all_strategies += [
-    MemoryDecay,
-    MetaHunter,
-    MetaHunterAggressive,
-    MetaMajority,
-    MetaMajorityMemoryOne,
-    MetaMajorityFiniteMemory,
-    MetaMajorityLongMemory,
-    MetaMinority,
-    MetaMixer,
-    MetaWinner,
-    MetaWinnerDeterministic,
-    MetaWinnerEnsemble,
-    MetaWinnerMemoryOne,
-    MetaWinnerFiniteMemory,
-    MetaWinnerLongMemory,
-    MetaWinnerStochastic,
-    NMWEDeterministic,
-    NMWEFiniteMemory,
-    NMWELongMemory,
-    NMWEMemoryOne,
-    NMWEStochastic,
-    NiceMetaWinner,
-    NiceMetaWinnerEnsemble,
-]
+#### EXCLUDING META STRATEGIES BECAUSE WE ARE NOT INTERESTED IN THOSE AT THE MOMENT #### 
+# all_strategies += [
+#     MemoryDecay,
+#     MetaHunter,
+#     MetaHunterAggressive,
+#     MetaMajority,
+#     MetaMajorityMemoryOne,
+#     MetaMajorityFiniteMemory,
+#     MetaMajorityLongMemory,
+#     MetaMinority,
+#     MetaMixer,
+#     MetaWinner,
+#     MetaWinnerDeterministic,
+#     MetaWinnerEnsemble,
+#     MetaWinnerMemoryOne,
+#     MetaWinnerFiniteMemory,
+#     MetaWinnerLongMemory,
+#     MetaWinnerStochastic,
+#     NMWEDeterministic,
+#     NMWEFiniteMemory,
+#     NMWELongMemory,
+#     NMWEMemoryOne,
+#     NMWEStochastic,
+#     NiceMetaWinner,
+#     NiceMetaWinnerEnsemble,
+# ]
 
 
 # Distinguished strategy collections in addition to
