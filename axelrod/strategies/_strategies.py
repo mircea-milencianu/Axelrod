@@ -19,6 +19,7 @@ annotated as to avoid some static testing. For example:
         MemoryOnePlayer
     )
     # isort:skip_file
+
 """
 from .adaptive import Adaptive
 from .adaptor import AdaptorBrief, AdaptorLong

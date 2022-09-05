@@ -13,6 +13,7 @@ import pprint as p
 import pandas as pd
 import numpy as np
 import tqdm
+from axelrod import tournament
 
 from axelrod.action import Action
 
@@ -52,7 +53,7 @@ class ResultMatrix:
         repetitions,
         run_scope,
         tour_type,
-        progress_bar=False,
+        progress_bar,
     ):
         """
         Parameters
@@ -72,13 +73,20 @@ class ResultMatrix:
         """
         self.filename = filename
         self.players, self.repetitions = players, repetitions
-        self.player_names = [player.name for player in players]
+        self.num_players = len(self.players)
+        self.unique_pairs = set()
+        
         self.run_scope = run_scope
         self.tour_type = tour_type
+
         if progress_bar:
             self.progress_bar = tqdm.tqdm(total=25, desc="Analysing")
-        # temp_df = self.df["Winner List"].apply((lambda x: ast.literal_eval(x)))
-        # self.df.update(temp_df)
+        
+        df = pd.read_csv(self.filename)
+        self.process_tournament_results(df)
+        
+        if progress_bar:
+            self.progress_bar.close()
 
     # def calc_winner(self):
     #     """
@@ -91,13 +99,8 @@ class ResultMatrix:
     #     # p.pprint("The final result for the interaction: {}".format(winner_list))
     #     return winner_list
 
-    def create(self):
-        """Create the matrix"""
-        self.df = pd.read_csv(self.filename)
-        self.build_pd()
 
-
-    def build_pd(self):
+    def process_tournament_results(self, df):
         """
         Build the winner dataframe.
 
@@ -106,41 +109,75 @@ class ResultMatrix:
             df: a pandas DataFrame holding the tournament results
         """
         # player_names = self.df["Player name"].unique()
+        # print("all players are: ", self.player_names)
+        # print('no of players: ', len(self.player_names))
 
-        winners = pd.DataFrame(index=self.player_names, columns=self.player_names)
-        utility_vectors = pd.DataFrame(
-            index=self.player_names, columns=self.player_names
-        )
-        utility_per_turn = pd.DataFrame(
-            index=self.player_names, columns=self.player_names
-        )
-        self.init_custom_value(winners, [0, 0, 0])
-        # basically going over every row and applying the functions we need for creating
-        # meaningful matrices; also theres a trick to keep the names the same, 
+        post_tour_results =  pd.DataFrame(columns=[
+            "Pair(P1, P2)", 
+            "Winners[P1, P2, EQ]", 
+            "Utility for P1[vector]",  
+            "Utility for P2[vector]", 
+            "Utility per turn for P1[vector]",
+            "Utility per turn for P2[vector]" 
+            ])
+
+        
+        # self.init_custom_value(post_tour_results, [0, 0, 0])
+        # going over every row and applying the functions we need for creating
+        # matrices; also theres a trick to keep the names the same, 
         # as some differences might appear because of different configuration parameters;
-        for _, row in self.df.iterrows():
-            for pl in self.player_names:
-                if pl in row["Player name"]:
-                    player_name = pl
-                if pl in row["Opponent name"]:
-                    opponent_name = pl
-            utility_per_turn.at[player_name, opponent_name] = self.build_interaction_vector(
-                round(row["Score per turn"], 6), utility_per_turn.at[player_name, opponent_name]
-            )
-            utility_vectors.at[player_name, opponent_name] = self.build_interaction_vector(
-                row["Score"], utility_vectors.at[player_name, opponent_name]
-            )
-            winners.at[player_name, opponent_name] = self.sum_lists(
-                row["Score difference"], winners.at[player_name, opponent_name]
-            )
+        columns = ["Turns", "Score per turn", "Score difference per turn"]
+        players_grouping = df.groupby(['Player name', 'Opponent name'])[columns].mean()
+        print(players_grouping.first())
 
-        self.divide_main_diagonal(winners)
-        self.pd_to_file(self.correct_main_diagonal(utility_vectors, "utility_vectors"),  "inv_main_diag_utility_vectors")
-        self.pd_to_file(self.correct_main_diagonal(utility_per_turn, "utility_per_turn"), "inv_main_diag_utility_per_turn_vectors")
+        # for _, row in df.iterrows():
+            
+        #     pair_results = []
 
-        self.pd_to_file(winners, "winners")
-        self.pd_to_file(utility_vectors, "utility_vectors")
-        self.pd_to_file(utility_per_turn, "utility_per_turn_vectors")
+        #     p1 = row["Player name"]
+        #     p2 = row["Opponent name"]
+
+
+        #     if self.check_unique_pair(p1, p2) is True:
+        #         pair = (p1, p2)
+        #         pair_results.append(pair)
+        #         post_tour_results.append(pd.Series(pair_results, index=df.columns[:len(pair_results)]), ignore_index=True)
+        #         # post_tour_results.loc['winners[P1, P2, EQ]'] = self.sum_winner_lists(
+        #         #     row["Score difference"], post_tour_results.loc['Winners[P1, P2, EQ]'])
+
+        self.pd_to_file(post_tour_results, "post_tour_results_test")
+
+            # print("pair: ({},{})".format(player_name, opponent_name))
+            # utility_per_turn.at[player_name, opponent_name] = self.build_interaction_vector(
+            #     round(row["Score per turn"], 6), utility_per_turn.at[player_name, opponent_name]
+            # )
+            # utility_vectors.at[player_name, opponent_name] = self.build_interaction_vector(
+            #     row["Score"], utility_vectors.at[player_name, opponent_name]
+            # )
+            # winners.at[player_name, opponent_name] = self.sum_lists(
+            #     row["Score difference"], winners.at[player_name, opponent_name]
+            # )
+
+        # self.divide_main_diagonal(winners)
+
+        # self.pd_to_file(winners, "winners")
+        # self.pd_to_file(utility_vectors, "utility_vectors")
+        # self.pd_to_file(utility_per_turn, "utility_per_turn_vectors")
+        # try: 
+        #     self.pd_to_file(self.correct_main_diagonal(utility_vectors, "utility_vectors"),  "inv_main_diag_utility_vectors")
+        # except TypeError:
+        #     print("Elements in the dataframe are not subscriptable. Check traceback.")
+        # self.pd_to_file(self.correct_main_diagonal(utility_per_turn, "utility_per_turn"), "inv_main_diag_utility_per_turn_vectors")
+
+
+    def check_unique_pair(self, p1, p2):
+        """
+        Extract the pair which is being processed in the current row and check if it is unique.
+        """
+        if (p1, p2) not in self.unique_pairs or (p2, p1) not in self.unique_pairs:
+            self.unique_pairs.add((p1,p2))
+            return True
+        return False
 
 
 
@@ -157,15 +194,18 @@ class ResultMatrix:
         # print(current_vector)
         return current_vector
 
-    def sum_lists(self, scores_diff, temp_list):
+    def sum_winner_lists(self, scores_diff, old_results):
         """
         Creates and adds the lists based on the score diff
         of the interaction.
         """
-        single_list = self.compute_interaction_list(scores_diff)
-        new_list = list(map(operator.add, temp_list, single_list))
-        # p.pprint(new_list)
-
+        if old_results is np.nan:
+            old_results = [0,0,0]
+            single_list = self.compute_interaction_list(scores_diff)
+            new_list = list(map(operator.add, old_results, single_list))
+        else:
+            single_list = self.compute_interaction_list(scores_diff)
+            new_list = list(map(operator.add, old_results, single_list))
         return new_list
 
     def correct_main_diagonal(self, df, df_name):
@@ -177,9 +217,11 @@ class ResultMatrix:
         """
         column_name = "{} inverse main diagonal".format(df_name)
         main_diag_df = pd.DataFrame(index=self.player_names ,columns=[column_name])
+
         # print(main_diag_df)
         for p in self.players:
-            main_diag_df.at[ p.name, column_name] = df.at[p.name, p.name][1::2]
+            print("player: ",p, "; value: ", df.at[p.name, p.name])
+            main_diag_df.at[p.name, column_name] = df.at[p.name, p.name][1::2]
             # print(temp_series)
             # print(df.at[p.name, p.name])
             df.at[p.name, p.name] = df.at[p.name, p.name][::2] # going over a row in the main diagonal and selecting the second elements
@@ -192,7 +234,7 @@ class ResultMatrix:
             df.at[p.name, p.name] = [int(x / 2) for x in df.at[p.name, p.name]]
 
     def init_custom_value(self, df, value):
-        """Add the value to each element of the matrix."""
+        """Initialize """
         for p1 in self.players:
             for p2 in self.players:
                 # p.pprint(p1.name)
