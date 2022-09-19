@@ -54,6 +54,12 @@ class Tournament(object):
             The game object used to score the tournament
         turns : integer
             The number of turns per match
+        normal : bool
+            Set to TRUE for a normal distribution from which the number of turns are selected.
+            It defaults to FALSE. If normal and uniform are both FALSE, a fixed number of tunrs will be used.
+        uniform : bool
+            Set to TRUE for a uniform distribution from which the number of turns are selected.
+            It defaults to FALSE. If normal and uniform are both FALSE, a fixed number of tunrs will be used.
         prob_end : float
             The probability of a given turn ending a match
         repetitions : integer
@@ -85,7 +91,12 @@ class Tournament(object):
             turns = DEFAULT_TURNS
 
         self.turns = turns
-        self.normal = normal
+        
+        if normal is None:
+            self.normal = False
+        if uniform is None:
+            self.uniform = False
+
         self.uniform = uniform
         self.deviation = deviation
         self.prob_end = prob_end

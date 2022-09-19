@@ -3,6 +3,7 @@ import operator
 import ast
 import os
 import math
+import itertools
 
 from collections import Counter, namedtuple
 from multiprocessing import cpu_count
@@ -88,18 +89,7 @@ class ResultMatrix:
         if progress_bar:
             self.progress_bar.close()
 
-    # def calc_winner(self):
-    #     """
-    #     Calculates the winner for a player -- opponent pair.
-    #     """
-
-    #         if row["Player name"] == player and row["Opponent name"] == opponent:
-    #             winner_list =list(map(operator.add, winner_list, row["Winner List"]))
-    #     # p.pprint("{} against {}".format(player, opponent))
-    #     # p.pprint("The final result for the interaction: {}".format(winner_list))
-    #     return winner_list
-
-
+    
     def process_tournament_results(self, df):
         """
         Build the winner dataframe.
@@ -108,44 +98,55 @@ class ResultMatrix:
         ----------
             df: a pandas DataFrame holding the tournament results
         """
-        # player_names = self.df["Player name"].unique()
-        # print("all players are: ", self.player_names)
-        # print('no of players: ', len(self.player_names))
+        ####
+        # PRE-PROCESSING results and setting the data types
+        ####
+        columns_of_interest = ['Player name', 'Opponent name', 'Score', 'Score difference', 'Score per turn']
+        df_of_interest = df[columns_of_interest]
 
-        post_tour_results =  pd.DataFrame(columns=[
-            "Pair(P1, P2)", 
-            "Winners[P1, P2, EQ]", 
-            "Utility for P1[vector]",  
-            "Utility for P2[vector]", 
-            "Utility per turn for P1[vector]",
-            "Utility per turn for P2[vector]" 
-            ])
-
+        new_columns = [
+            'Pair(P1, P2)',
+            'Occurence', 
+            'Winners[P1, P2, EQ]', 
+            'Utility for P1[vector]',  
+            'Utility for P2[vector]', 
+            'Utility per turn for P1[vector]',
+            'Utility per turn for P2[vector]' 
+            ]
+        post_tour_results =  pd.DataFrame(columns=new_columns)
         
-        # self.init_custom_value(post_tour_results, [0, 0, 0])
-        # going over every row and applying the functions we need for creating
-        # matrices; also theres a trick to keep the names the same, 
-        # as some differences might appear because of different configuration parameters;
-        columns = ["Turns", "Score per turn", "Score difference per turn"]
-        players_grouping = df.groupby(['Player name', 'Opponent name'])[columns].mean()
-        print(players_grouping.first())
-
+        # players = df["Player name"].unique()
+        # all_pairs = self.cartesian_product_of_players(players)
+        # post_tour_results["Pair(P1, P2)"] = all_pairs
+        
+        new_columns.remove("Pair(P1, P2)")
+        for col in new_columns:
+            if col == "Occurence":
+                post_tour_results[col] = 0
+            else:
+                post_tour_results[col] = [ [] for _ in range(len(all_pairs)) ]
+ 
+        df_dict_of_interest = df_of_interest.to_dict('records')
+        for row in df_dict_of_interest:
+            # print(record, type(record))
+            pair = "{},{}".format(row['Player name'], row['Opponent name'])
+            winners = self.sum_lists(
+                row["Score difference"], winners.at[player_name, opponent_name]
+            )
         # for _, row in df.iterrows():
-            
-        #     pair_results = []
-
-        #     p1 = row["Player name"]
-        #     p2 = row["Opponent name"]
-
-
-        #     if self.check_unique_pair(p1, p2) is True:
-        #         pair = (p1, p2)
-        #         pair_results.append(pair)
-        #         post_tour_results.append(pd.Series(pair_results, index=df.columns[:len(pair_results)]), ignore_index=True)
-        #         # post_tour_results.loc['winners[P1, P2, EQ]'] = self.sum_winner_lists(
-        #         #     row["Score difference"], post_tour_results.loc['Winners[P1, P2, EQ]'])
+        #     # print(row, type(row))
+        #     pair_in_row = self.check_pair(row['Player name'], row['Opponent name'])
+        #     for _, row in post_tour_results.iterrows():
+        #         if row_pair == row["Pair(P1, P2)"]:
+        #             print("row_pair: {} is equal with {}".format(row_pair, row["Pair(P1, P2)"]))
+        #             # different_pairs_count += 1
+        #             post_tour_results["Occurence"] += 1
+        
 
         self.pd_to_file(post_tour_results, "post_tour_results_test")
+               
+
+
 
             # print("pair: ({},{})".format(player_name, opponent_name))
             # utility_per_turn.at[player_name, opponent_name] = self.build_interaction_vector(
@@ -170,15 +171,16 @@ class ResultMatrix:
         # self.pd_to_file(self.correct_main_diagonal(utility_per_turn, "utility_per_turn"), "inv_main_diag_utility_per_turn_vectors")
 
 
-    def check_unique_pair(self, p1, p2):
-        """
-        Extract the pair which is being processed in the current row and check if it is unique.
-        """
-        if (p1, p2) not in self.unique_pairs or (p2, p1) not in self.unique_pairs:
-            self.unique_pairs.add((p1,p2))
-            return True
-        return False
+    def cartesian_product_of_players(self, elements: list[str]) -> list[tuple[str, str]]:
+        """ 
+        Precondition: `elements` does not contain duplicates.
+            Postcondition: Returns unique combinations of length 2 from `elements`.
 
+            >>> unique_combinations(["apple", "orange", "banana"])
+            [("apple", "orange"), ("apple", "banana"), ("orange", "banana")]
+        """
+        
+        return list(itertools.combinations_with_replacement(elements, 2))
 
 
     def build_interaction_vector(self, interaction_score, current_vector):
