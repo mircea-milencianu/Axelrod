@@ -7,6 +7,7 @@ import itertools
 
 from collections import Counter, namedtuple
 from multiprocessing import cpu_count
+from textwrap import indent
 from typing import List
 
 import pprint as p
@@ -101,48 +102,55 @@ class ResultMatrix:
         ####
         # PRE-PROCESSING results and setting the data types
         ####
-        columns_of_interest = ['Player name', 'Opponent name', 'Score', 'Score difference', 'Score per turn']
-        df_of_interest = df[columns_of_interest]
-
+        columns_of_interest = ['Interaction index', 'Player name', 'Opponent name', 'Score', 'Score difference', 'Score per turn', 'Winner List']
+        df_selected_cols = df[columns_of_interest]
+        self.pd_to_file(df_selected_cols, "selected_columns_for_processing")
         new_columns = [
-            'Pair(P1, P2)',
-            'Occurence', 
-            'Winners[P1, P2, EQ]', 
-            'Utility for P1[vector]',  
-            'Utility for P2[vector]', 
-            'Utility per turn for P1[vector]',
-            'Utility per turn for P2[vector]' 
+            'P1_vs_P2',
+            'Winners[P1_P2_EQ]', 
+            'Utility_P1',
+            'Utility_per_turn_P1',
+            'Utility_P2',             
+            'Utility_per_turn_P2' 
             ]
-        post_tour_results =  pd.DataFrame(columns=new_columns)
-        
-        # players = df["Player name"].unique()
-        # all_pairs = self.cartesian_product_of_players(players)
-        # post_tour_results["Pair(P1, P2)"] = all_pairs
-        
-        new_columns.remove("Pair(P1, P2)")
-        for col in new_columns:
-            if col == "Occurence":
-                post_tour_results[col] = 0
-            else:
-                post_tour_results[col] = [ [] for _ in range(len(all_pairs)) ]
- 
-        df_dict_of_interest = df_of_interest.to_dict('records')
-        for row in df_dict_of_interest:
-            # print(record, type(record))
-            pair = "{},{}".format(row['Player name'], row['Opponent name'])
-            winners = self.sum_lists(
-                row["Score difference"], winners.at[player_name, opponent_name]
-            )
-        # for _, row in df.iterrows():
-        #     # print(row, type(row))
-        #     pair_in_row = self.check_pair(row['Player name'], row['Opponent name'])
-        #     for _, row in post_tour_results.iterrows():
-        #         if row_pair == row["Pair(P1, P2)"]:
-        #             print("row_pair: {} is equal with {}".format(row_pair, row["Pair(P1, P2)"]))
-        #             # different_pairs_count += 1
-        #             post_tour_results["Occurence"] += 1
-        
 
+        df_selected_to_dict = df_selected_cols.to_dict('records')
+        pair_results = {}
+
+        for record in df_selected_to_dict:
+            
+            # print(record)
+            
+            p1 = record['Player name']
+            p2 = record['Opponent name']
+            p1_score = record['Score']
+            p1_score_per_turn = record['Score per turn']
+
+            # set the current working pair
+            pair = f"{p1},{p2}"
+            inverse_pair = f"{p2},{p1}"
+            
+            if pair not in pair_results and inverse_pair not in pair_results:
+                pair_results[pair] = self.init_row(pair)
+            
+            if p1 == p2:
+                ### two players having the same strategy behind
+                pair_results[pair] = self.identical_players(pair_results[pair], p1_score, p1_score_per_turn)
+            else:
+                ## if pair in is current and in matrix process for p1
+                ## if inverse is in dict process for p2
+                pair_results[pair] = self.identical_players(pair_results[pair], p1_score, p1_score_per_turn)
+
+            # if pair in pair_results:
+            #     pair_results[pair] = self.process_p1(pair_results[pair], record['Score'], record['Score per turn'])
+
+            # else:
+            #     pair_results[pair] = 
+            
+            # post_tour_results = post_tour_results.concat(a_series, ignore_index=True)
+        
+        # print(pair_results)
+        post_tour_results = pd.DataFrame.from_dict(pair_results, orient='index', columns=new_columns)
         self.pd_to_file(post_tour_results, "post_tour_results_test")
                
 
@@ -171,17 +179,41 @@ class ResultMatrix:
         # self.pd_to_file(self.correct_main_diagonal(utility_per_turn, "utility_per_turn"), "inv_main_diag_utility_per_turn_vectors")
 
 
-    def cartesian_product_of_players(self, elements: list[str]) -> list[tuple[str, str]]:
-        """ 
-        Precondition: `elements` does not contain duplicates.
-            Postcondition: Returns unique combinations of length 2 from `elements`.
-
-            >>> unique_combinations(["apple", "orange", "banana"])
-            [("apple", "orange"), ("apple", "banana"), ("orange", "banana")]
+    def init_row(self, pair) -> list:
         """
-        
-        return list(itertools.combinations_with_replacement(elements, 2))
+        Process the results from specific columns the initial result set.
+        ____
+        Returns:
+            list: containing all the results for the 
+        """
+        return [pair, [], [], [], [], []]
 
+    def identical_players(self, row, score, turn_score):
+        """
+        This is a bit tricky to solve right away. So here we have a compromise solution
+        row[2] : P1 score;
+        row[3] : P1 score per turn;
+        row[4] : P2 score;
+        row[5] : P2 score per turn;
+
+        Here the lengths of the list are compared because the name of the strategies are the same.
+        Thus, when we reach a second row with the same strategies, we KNOW that 
+        we are working with the values of the second player in a pair.
+        """
+        if len(row[2]) > len(row[4]) and len(row[3]) > len(row[5]):
+            row[4].append(score)
+            row[5].append(turn_score)
+        else:
+            row[2].append(score)
+            row[3].append(turn_score)
+        
+        return row
+
+
+    # def process_p1(self, row, score, turn_score):
+    #     row[2].append(score)
+    #     row[3].append(turn_score)
+    #     return row
 
     def build_interaction_vector(self, interaction_score, current_vector):
         """
@@ -267,6 +299,7 @@ class ResultMatrix:
             os.makedirs("results_{}/".format(self.tour_type))
 
         pd.to_csv(
-            "results_{}/{}_{}.csv".format(self.tour_type, self.run_scope, pd_type)
+            "results_{}/{}_{}.csv".format(self.tour_type, self.run_scope, pd_type),
+            index=False
         )
         # self.df.to_csv("results/normed_{}.csv".format( ))
