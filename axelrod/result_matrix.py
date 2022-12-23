@@ -1,45 +1,7 @@
-import csv
 import operator
-import ast
 import os
-import math
-import itertools
-
-from collections import Counter, namedtuple
-from multiprocessing import cpu_count
-from textwrap import indent
-from typing import List
-
-import pprint as p
 
 import pandas as pd
-import numpy as np
-import tqdm
-from axelrod import tournament
-
-from axelrod.action import Action
-
-from . import eigen
-
-C, D = Action.C, Action.D
-
-
-def update_progress_bar(method):
-    """A decorator to update a progress bar if it exists"""
-
-    def wrapper(*args, **kwargs):
-        """Run the method and update the progress bar if it exists"""
-        output = method(*args, **kwargs)
-
-        try:
-            args[0].progress_bar.update(1)
-        except AttributeError:
-            pass
-
-        return output
-
-    return wrapper
-
 
 class ResultMatrix:
     """
